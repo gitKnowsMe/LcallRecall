@@ -1,0 +1,114 @@
+{
+  "name": "localrecall",
+  "version": "1.0.0",
+  "description": "Private local RAG desktop application with Phi-2 and FAISS",
+  "main": "electron/main.js",
+  "scripts": {
+    "electron": "NODE_ENV=development electron .",
+    "electron:dev": "concurrently \"npm run frontend:dev\" \"wait-on http://localhost:3000 && npm run electron\"",
+    "electron:pack": "electron-builder --dir",
+    "electron:dist": "npm run frontend:build && electron-builder",
+    "frontend:dev": "cd app && npm run dev",
+    "frontend:build": "cd app && npm run build",
+    "frontend:start": "cd app && npm run start",
+    "backend:dev": "cd backend && python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
+    "backend:install": "cd backend && pip install -r requirements.txt",
+    "dev": "concurrently \"npm run backend:dev\" \"npm run electron:dev\"",
+    "build": "npm run frontend:build && npm run electron:pack",
+    "dist": "npm run frontend:build && npm run electron:dist",
+    "postinstall": "npm install --prefix app"
+  },
+  "keywords": [
+    "electron",
+    "desktop",
+    "rag",
+    "ai",
+    "local",
+    "privacy",
+    "phi-2",
+    "faiss",
+    "nextjs",
+    "fastapi"
+  ],
+  "author": "LocalRecall Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4",
+    "wait-on": "^7.0.1"
+  },
+  "dependencies": {
+    "electron-updater": "^6.1.4"
+  },
+  "build": {
+    "appId": "com.localrecall.app",
+    "productName": "LocalRecall",
+    "copyright": "Copyright © 2025 LocalRecall Team",
+    "directories": {
+      "output": "dist",
+      "buildResources": "resources"
+    },
+    "files": [
+      "electron/**/*",
+      "app/build/**/*",
+      "app/.next/**/*",
+      "backend/**/*",
+      "!backend/tests/**/*",
+      "!backend/**/__pycache__/**/*",
+      "!backend/**/*.pyc",
+      "!backend/.pytest_cache/**/*",
+      "!**/node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "backend",
+        "to": "backend",
+        "filter": [
+          "!tests/**/*",
+          "!**/__pycache__/**/*",
+          "!**/*.pyc",
+          "!.pytest_cache/**/*"
+        ]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "resources/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "darkModeSupport": true,
+      "entitlements": "resources/entitlements.mac.plist",
+      "entitlementsInherit": "resources/entitlements.mac.plist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "resources/icon.ico"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "resources/icon.png",
+      "category": "Office"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}

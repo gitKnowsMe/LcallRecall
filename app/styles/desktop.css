@@ -1,0 +1,198 @@
+/* Desktop App Specific Styles */
+
+/* Hide web-specific elements in desktop mode */
+.desktop-app .web-only {
+  display: none !important;
+}
+
+/* Desktop app frame styles */
+.desktop-app {
+  /* Remove web browser chrome compensation */
+  padding-top: 0;
+}
+
+/* macOS specific styles */
+.desktop-app.platform-mac {
+  /* Frameless window - no native controls */
+  padding-top: 0;
+}
+
+.desktop-app.platform-mac .macos-controls {
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px;
+  -webkit-app-region: no-drag;
+}
+
+.desktop-app.platform-mac .macos-control {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 0.5px solid rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.1s ease;
+}
+
+.desktop-app.platform-mac .macos-control:hover {
+  opacity: 0.8;
+  transform: scale(1.1);
+}
+
+.desktop-app.platform-mac .macos-control:active {
+  transform: scale(0.95);
+}
+
+.desktop-app.platform-mac .macos-control.red {
+  background: #ff5f57;
+}
+
+.desktop-app.platform-mac .macos-control.yellow {
+  background: #ffbd2e;
+}
+
+.desktop-app.platform-mac .macos-control.green {
+  background: #28ca42;
+}
+
+/* Windows specific styles */
+.desktop-app.platform-windows {
+  /* Windows title bar handling */
+  border-radius: 0;
+}
+
+/* Linux specific styles */
+.desktop-app.platform-linux {
+  /* Linux window manager compatibility */
+  border-radius: 0;
+}
+
+/* Desktop app connectivity indicator */
+.desktop-connectivity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(var(--background), 0.8);
+  border: 1px solid rgba(var(--border), 0.5);
+  font-size: 12px;
+}
+
+.desktop-connectivity.connected {
+  color: rgb(34 197 94);
+  border-color: rgba(34, 197, 94, 0.3);
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.desktop-connectivity.disconnected {
+  color: rgb(239 68 68);
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.desktop-connectivity.connecting {
+  color: rgb(245 158 11);
+  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.desktop-connectivity .status-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.desktop-connectivity.connecting .status-indicator {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Desktop-specific scrollbars */
+.desktop-app ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.desktop-app ::-webkit-scrollbar-track {
+  background: rgba(var(--muted), 0.3);
+  border-radius: 4px;
+}
+
+.desktop-app ::-webkit-scrollbar-thumb {
+  background: rgba(var(--muted-foreground), 0.5);
+  border-radius: 4px;
+}
+
+.desktop-app ::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--muted-foreground), 0.7);
+}
+
+/* Desktop app window controls area */
+.desktop-titlebar {
+  -webkit-app-region: drag;
+  min-height: 44px;
+  position: relative;
+}
+
+.desktop-titlebar * {
+  -webkit-app-region: no-drag;
+}
+
+/* Disable text selection for better desktop feel */
+.desktop-app .no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Desktop app specific animations */
+.desktop-app .window-content {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Desktop context menu styles */
+.desktop-app .context-menu {
+  background: rgba(var(--background), 0.95);
+  border: 1px solid rgba(var(--border), 0.8);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
+}
+
+/* Desktop notification styles */
+.desktop-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 2000;
+  max-width: 300px;
+  padding: 12px;
+  background: rgba(var(--background), 0.95);
+  border: 1px solid rgba(var(--border), 0.8);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Desktop loading states */
+.desktop-app .loading-overlay {
+  background: rgba(var(--background), 0.8);
+  backdrop-filter: blur(4px);
+}

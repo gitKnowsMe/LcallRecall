@@ -1,0 +1,37 @@
+# Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# LLM Integration
+llama-cpp-python==0.2.19
+
+# Vector Database & Embeddings
+faiss-cpu==1.7.4
+sentence-transformers==2.7.0
+transformers==4.36.0
+torch==2.1.0
+huggingface_hub==0.20.0
+numpy==1.24.4
+
+# PDF Processing
+PyMuPDF==1.23.8
+spacy==3.7.2
+
+# Database & Auth
+sqlalchemy==2.0.23
+aiosqlite>=0.20.0
+greenlet>=1.0.0
+bcrypt==4.1.2
+python-jose[cryptography]==3.3.0
+python-multipart==0.0.6
+
+# Utilities
+python-dotenv==1.0.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-mock==3.12.0
+httpx==0.25.2
