@@ -2,11 +2,11 @@
 
 import type React from "react"
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, Bot, Copy, ThumbsUp, ThumbsDown, Mic, AlertCircle, RefreshCw } from "lucide-react"
+import { Send, Bot, Copy, ThumbsUp, ThumbsDown, Mic, AlertCircle, RefreshCw, ChevronUp } from "lucide-react"
 import { desktopAPI } from "@/lib/desktop-api"
 
 interface Message {
@@ -55,12 +55,39 @@ export function QueryInterface() {
   const [isLoading, setIsLoading] = useState(false)
   const [currentStream, setCurrentStream] = useState<EventSource | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [displayLimit, setDisplayLimit] = useState(10)
+  const [showScrollTop, setShowScrollTop] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const scrollViewportRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Get visible messages (last N messages based on display limit)
+  const visibleMessages = useMemo(() => {
+    return messages.slice(-displayLimit)
+  }, [messages, displayLimit])
+
+  const hasMoreMessages = messages.length > displayLimit
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
+
+  const scrollToTop = () => {
+    scrollViewportRef.current?.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  const loadMoreMessages = useCallback(() => {
+    setDisplayLimit(prev => Math.min(prev + 10, messages.length))
+  }, [messages.length])
+
+  // Monitor scroll position to show/hide scroll-to-top button
+  const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+    const target = event.currentTarget
+    if (target) {
+      const { scrollTop } = target
+      setShowScrollTop(scrollTop > 200) // Show button when scrolled down 200px
+    }
+  }, [])
 
   // Save messages to localStorage whenever they change
   useEffect(() => {
@@ -69,6 +96,7 @@ export function QueryInterface() {
     }
     scrollToBottom()
   }, [messages])
+
   
   // Cleanup EventSource on unmount
   useEffect(() => {
@@ -280,10 +308,16 @@ export function QueryInterface() {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-screen">
-      <div className="flex items-center justify-between p-6 border-b border-border">
+    <div className="flex-1 flex flex-col h-full relative">
+      {/* Fixed Header */}
+      <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-border">
         <div>
           <h1 className="text-xl font-semibold text-foreground">AI Chat</h1>
+          {hasMoreMessages && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Showing last {displayLimit} of {messages.length} messages
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -303,13 +337,33 @@ export function QueryInterface() {
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-6">
+      <ScrollArea className="flex-1 overflow-hidden">
         <div 
-          className="max-w-4xl mx-auto space-y-6" 
-          role="log" 
-          aria-live="polite"
+          className="p-6"
+          ref={scrollViewportRef}
+          onScroll={handleScroll}
         >
-          {messages.map((message) => (
+          <div 
+            className="max-w-4xl mx-auto space-y-6" 
+            role="log" 
+            aria-live="polite"
+          >
+            {/* Load More Button */}
+            {hasMoreMessages && (
+              <div className="text-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadMoreMessages}
+                  className="text-sm text-muted-foreground"
+                >
+                  <ChevronUp className="h-4 w-4 mr-2" />
+                  Load {Math.min(10, messages.length - displayLimit)} older messages
+                </Button>
+              </div>
+            )}
+
+            {visibleMessages.map((message) => (
             <div key={message.id} className="space-y-3">
               <div className="flex gap-3 items-start">
                 <div className="flex-shrink-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center">
@@ -431,11 +485,24 @@ export function QueryInterface() {
             </div>
           )}
 
-          <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} />
+          </div>
         </div>
       </ScrollArea>
 
-      <div className="p-6 border-t border-border">
+      {/* Scroll to Top Button */}
+      {showScrollTop && (
+        <Button
+          className="fixed bottom-20 right-6 rounded-full shadow-lg z-10 w-10 h-10 p-0"
+          onClick={scrollToTop}
+          title="Scroll to top"
+        >
+          <ChevronUp className="h-4 w-4" />
+        </Button>
+      )}
+
+      {/* Fixed Input Area */}
+      <div className="flex-shrink-0 p-6 border-t border-border">
         <div className="max-w-4xl mx-auto">
           <form onSubmit={handleSubmit} className="flex gap-3 items-end">
             <div className="flex-1 relative">
