@@ -282,7 +282,7 @@ export function DocumentUpload() {
                           <div>
                             <div className="font-medium text-foreground">{doc.title || doc.filename}</div>
                             <div className="text-sm text-muted-foreground">
-                              {formatFileSize(doc.file_size)} • {formatDate(doc.upload_date)}
+                              {formatFileSize(doc.file_size)} • {formatDate(doc.created_at)}
                               {doc.processing_status === 'processing' && ' • Processing'}
                               {doc.processing_status === 'error' && ' • Error'}
                             </div>

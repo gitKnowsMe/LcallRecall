@@ -11,6 +11,9 @@ declare global {
       showMessageBox: (options: any) => Promise<any>;
       platform: string;
       removeAllListeners: (channel: string) => void;
+      closeWindow?: () => void;
+      minimizeWindow?: () => void;
+      maximizeWindow?: () => void;
     };
   }
 }
@@ -145,9 +148,31 @@ class DesktopAPI {
   // Authentication methods
   private getAuthToken(): string | null {
     if (typeof localStorage !== 'undefined') {
-      return localStorage.getItem('localrecall_token');
+      const token = localStorage.getItem('localrecall_token');
+      // Add basic token validation
+      if (token && token.length > 0) {
+        return token;
+      }
     }
     return null;
+  }
+  
+  // Check if user is authenticated with valid token
+  isAuthenticated(): boolean {
+    const token = this.getAuthToken();
+    return token !== null && token.length > 0;
+  }
+  
+  // Validate token by making a quick API call
+  async validateToken(): Promise<boolean> {
+    try {
+      await this.getCurrentUser();
+      return true;
+    } catch (error) {
+      // Token is invalid or expired
+      this.removeAuthToken();
+      return false;
+    }
   }
 
   private setAuthToken(token: string) {
@@ -269,19 +294,19 @@ class DesktopAPI {
 
   // Window controls (Electron only)
   closeWindow() {
-    if (this.isDesktopApp() && window.electronAPI) {
+    if (this.isDesktopApp() && window.electronAPI && window.electronAPI.closeWindow) {
       window.electronAPI.closeWindow();
     }
   }
 
   minimizeWindow() {
-    if (this.isDesktopApp() && window.electronAPI) {
+    if (this.isDesktopApp() && window.electronAPI && window.electronAPI.minimizeWindow) {
       window.electronAPI.minimizeWindow();
     }
   }
 
   maximizeWindow() {
-    if (this.isDesktopApp() && window.electronAPI) {
+    if (this.isDesktopApp() && window.electronAPI && window.electronAPI.maximizeWindow) {
       window.electronAPI.maximizeWindow();
     }
   }

@@ -1,0 +1,62 @@
+
+⏺ Revised LocalRecall MVP Roadmap
+
+  Day 1-2: Critical Fixes 🔥
+
+  Goal: Fix what's broken
+
+  1. Fix Phi-2 Model Loading
+    - Locate or download the model file
+    - Update path in backend/app/services/llm_service.py:16
+    - Test model initialization works
+  2. Fix Document Processor Integration
+    - Remove mock document_processor_api.py
+    - Wire real document_processor.py into API endpoints
+    - Connect PDF → chunking → FAISS pipeline
+  3. Simple Chunking is Fine
+    - Keep the text splitting fallback working
+    - spaCy can wait - simple chunks work for MVP
+
+  Day 3-4: Core Pipeline 🔧
+
+  Goal: End-to-end working system
+
+  4. Service Integration
+    - Fix service initialization in main.py
+    - Wire: PDF upload → extract text → chunk → embed →
+  store in FAISS
+    - Connect query → FAISS search → context → Phi-2 →
+  response
+  5. Database Integration
+    - Store documents and chunks in SQLite properly
+    - Link FAISS vector IDs to database chunk records
+    - Implement workspace isolation
+
+  Day 5: Desktop App Testing 🖥️
+
+  Goal: Prove the full workflow works
+
+  6. Complete User Journey
+    - Login → Upload PDF → Ask question → Get answer with
+  sources
+    - Fix any integration issues found during testing
+    - Ensure streaming responses work in the UI
+
+  Week 2+: Polish (Optional) ✨
+
+  Goal: Make it better
+
+  7. Only if MVP works well:
+    - Smarter chunking with spaCy
+    - Retrieval quality improvements
+    - Hybrid search
+    - Performance optimizations
+
+  ---
+  Key insight from your roadmap: Get the basic "PDF in,
+  answer out" workflow working first. Everything else is
+  optimization.
+
+  This focuses on the core value proposition: "Ask questions
+   about your PDFs locally." Once that works reliably, we
+  can make it smarter and faster.

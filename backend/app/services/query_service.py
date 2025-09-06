@@ -69,7 +69,7 @@ class QueryService:
             if not query or not query.strip():
                 raise QueryError("Query cannot be empty")
                 
-            if not workspace_id or not workspace_id.strip():
+            if not workspace_id or not str(workspace_id).strip():
                 raise QueryError("Workspace ID is required")
             
             # Use defaults if not specified
@@ -79,17 +79,15 @@ class QueryService:
                 min_score = self.min_similarity_score
             
             # Perform vector search
-            results = await self.vector_service.search_documents(
+            results = await self.vector_service.search(
                 workspace_id=workspace_id,
                 query=query,
-                top_k=top_k
+                k=top_k,
+                score_threshold=min_score
             )
             
-            # Filter by minimum score
-            filtered_results = [
-                result for result in results 
-                if result.get("score", 0) >= min_score
-            ]
+            # Results are already filtered by score_threshold in vector_service.search
+            filtered_results = results
             
             if not filtered_results:
                 raise NoResultsError("No similar documents found for the query")
@@ -117,14 +115,14 @@ class QueryService:
         
         context_parts = []
         for i, result in enumerate(search_results, 1):
-            content = result.get("content", "")
-            metadata = result.get("metadata", {})
+            # Vector service returns results with 'text' key
+            content = result.get("text", "")
             
-            # Format with source attribution
-            filename = metadata.get("filename", "Unknown")
-            page = metadata.get("page", "Unknown")
+            # Format with source attribution  
+            filename = result.get("filename", "Unknown")
+            chunk_index = result.get("chunk_index", i)
             
-            source_info = f"[Source: {filename}, Page {page}]"
+            source_info = f"[Source: {filename}, Chunk {chunk_index}]"
             context_part = f"{source_info}\n{content}\n"
             context_parts.append(context_part)
         
@@ -142,14 +140,13 @@ class QueryService:
         """
         sources = []
         for result in search_results:
-            metadata = result.get("metadata", {})
             source = {
-                "document_id": result.get("document_id", ""),
-                "filename": metadata.get("filename", "Unknown"),
-                "page": metadata.get("page", 1),
-                "chunk_index": metadata.get("chunk_index", 0),
-                "relevance_score": result.get("score", 0.0),
-                "content_preview": result.get("content", "")[:150] + "..." if len(result.get("content", "")) > 150 else result.get("content", "")
+                "document_id": result.get("document_id", result.get("doc_id", "")),
+                "filename": result.get("filename", "Unknown"),
+                "page": result.get("page", 1),
+                "chunk_index": result.get("chunk_index", result.get("chunk_id", 0)),
+                "relevance_score": result.get("similarity", 0.0),
+                "content_preview": result.get("text", "")[:150] + "..." if len(result.get("text", "")) > 150 else result.get("text", "")
             }
             sources.append(source)
         return sources
@@ -202,10 +199,10 @@ class QueryService:
             if not query or not query.strip():
                 raise QueryError("Query cannot be empty")
                 
-            if not workspace_id or not workspace_id.strip():
+            if not workspace_id or not str(workspace_id).strip():
                 raise QueryError("Workspace ID is required")
                 
-            if not user_id or not user_id.strip():
+            if not user_id or not str(user_id).strip():
                 raise QueryError("User ID is required")
             
             # Search for similar documents
@@ -233,7 +230,7 @@ class QueryService:
             if temperature is not None:
                 generation_params["temperature"] = temperature
             
-            response = await self.llm_service.generate_text(
+            response = await self.llm_service.generate(
                 prompt=rag_prompt,
                 **generation_params
             )
@@ -289,13 +286,16 @@ class QueryService:
             NoResultsError: If no results found
         """
         try:
-            # Validate inputs
+            # Validate inputs and ensure proper types
+            query = str(query) if query is not None else ""
             if not query or not query.strip():
                 raise QueryError("Query cannot be empty")
                 
+            workspace_id = str(workspace_id) if workspace_id is not None else ""
             if not workspace_id or not workspace_id.strip():
                 raise QueryError("Workspace ID is required")
                 
+            user_id = str(user_id) if user_id is not None else ""
             if not user_id or not user_id.strip():
                 raise QueryError("User ID is required")
             
@@ -325,7 +325,7 @@ class QueryService:
                 generation_params["temperature"] = temperature
             
             # Generate streaming response
-            response_stream = self.llm_service.generate_streaming_text(
+            response_stream = self.llm_service.generate_stream(
                 prompt=rag_prompt,
                 **generation_params
             )

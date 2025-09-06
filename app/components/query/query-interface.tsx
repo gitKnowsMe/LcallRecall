@@ -159,58 +159,101 @@ export function QueryInterface() {
       const eventSource = desktopAPI.createQueryStream(userQuery, { top_k: 5 })
       setCurrentStream(eventSource)
 
-      eventSource.onmessage = (event) => {
+      // Track streaming state
+      let hasReceivedData = false
+      let streamCompleted = false
+
+      // Handle chunk events (streaming content)
+      eventSource.addEventListener('chunk', (event) => {
+        hasReceivedData = true
         try {
-          const data = JSON.parse(event.data)
-          
-          if (data.type === 'token' && data.token) {
-            // Update message with streaming token
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantMessage.id
-                  ? { ...msg, content: msg.content + data.token }
-                  : msg
-              )
-            )
-          } else if (data.type === 'done') {
-            // Stream completed
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantMessage.id
-                  ? { 
-                      ...msg, 
-                      isStreaming: false, 
-                      sources: data.sources || [] 
-                    }
-                  : msg
-              )
-            )
-            setIsLoading(false)
-            eventSource.close()
-            setCurrentStream(null)
-          }
-        } catch (error) {
-          console.error('Error parsing SSE data:', error)
+          const chunkData = event.data
           setMessages((prev) =>
             prev.map((msg) =>
               msg.id === assistantMessage.id
-                ? { ...msg, error: 'Error parsing response', isStreaming: false }
+                ? { ...msg, content: msg.content + chunkData }
+                : msg
+            )
+          )
+        } catch (error) {
+          console.error('Error handling chunk:', error)
+        }
+      })
+
+      // Handle metadata events (sources)
+      eventSource.addEventListener('metadata', (event) => {
+        hasReceivedData = true
+        try {
+          const data = JSON.parse(event.data)
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMessage.id
+                ? { ...msg, sources: data.sources || [] }
+                : msg
+            )
+          )
+        } catch (error) {
+          console.error('Error handling metadata:', error)
+        }
+      })
+
+      // Handle completion events
+      eventSource.addEventListener('complete', (event) => {
+        hasReceivedData = true
+        try {
+          streamCompleted = true
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMessage.id
+                ? { ...msg, isStreaming: false }
                 : msg
             )
           )
           setIsLoading(false)
+          eventSource.close()
+          setCurrentStream(null)
+        } catch (error) {
+          console.error('Error handling completion:', error)
         }
+      })
+
+      // Handle progress events
+      eventSource.addEventListener('progress', (event) => {
+        try {
+          console.log('Progress:', JSON.parse(event.data))
+        } catch (error) {
+          console.error('Error handling progress:', error)
+        }
+      })
+
+      // Fallback onmessage for any other events
+      eventSource.onmessage = (event) => {
+        hasReceivedData = true
+        console.log('Generic message event:', event)
       }
 
       eventSource.onerror = (error) => {
         console.error('SSE Error:', error)
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === assistantMessage.id
-              ? { ...msg, error: 'Connection error', isStreaming: false }
-              : msg
+        
+        // Only show error if stream hasn't completed normally
+        if (!streamCompleted) {
+          // If we received data, it's likely a connection issue
+          // If no data received, could be auth issue or empty results
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMessage.id
+                ? { 
+                    ...msg, 
+                    error: hasReceivedData 
+                      ? 'Connection interrupted. Please try again.'
+                      : 'No response received. Please check your connection or try logging out and back in.',
+                    isStreaming: false 
+                  }
+                : msg
+            )
           )
-        )
+        }
+        
         setIsLoading(false)
         eventSource.close()
         setCurrentStream(null)
@@ -218,10 +261,17 @@ export function QueryInterface() {
 
     } catch (error: any) {
       console.error('Query failed:', error)
+      
+      // Check if it's an auth error from createQueryStream
+      const isAuthError = error.message && error.message.includes('AUTH_ERROR')
+      const errorMessage = isAuthError 
+        ? 'Please log in to continue chatting.'
+        : 'Error processing your request. Please try again.'
+      
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === assistantMessage.id
-            ? { ...msg, error: 'Error processing your request', isStreaming: false }
+            ? { ...msg, error: errorMessage, isStreaming: false }
             : msg
         )
       )
@@ -298,13 +348,13 @@ export function QueryInterface() {
                     <div className="mt-2 p-3 bg-muted rounded-lg">
                       <h4 className="text-xs font-medium text-muted-foreground mb-2">Sources:</h4>
                       <div className="space-y-1">
-                        {message.sources.map((source, idx) => (
+                        {message.sources.map((source: any, idx) => (
                           <div key={idx} className="text-xs text-muted-foreground flex items-center justify-between">
                             <span className="truncate">
-                              {source.title}
-                              {source.metadata.page && ` (Page ${source.metadata.page})`}
+                              {source.filename || source.title || 'Unknown'}
+                              {source.page && ` (Page ${source.page})`}
                             </span>
-                            <span className="text-primary font-medium">{Math.round(source.score * 100)}%</span>
+                            <span className="text-primary font-medium">{Math.round((source.relevance_score || source.score || 0) * 100)}%</span>
                           </div>
                         ))}
                       </div>

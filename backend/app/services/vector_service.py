@@ -160,20 +160,75 @@ class VectorStoreManager:
         # Search FAISS index
         scores, indices = self.workspace_indices[workspace_id].search(query_embedding, k)
         
+        # Check if we have any results
+        if len(scores) == 0 or len(indices) == 0 or len(scores[0]) == 0:
+            return []
+        
         # Prepare results
         results = []
+        metadata_list = self.workspace_metadata[workspace_id]
+        out_of_sync_count = 0
+        
         for i, (score, idx) in enumerate(zip(scores[0], indices[0])):
             if idx == -1:  # No more results
                 break
+            
+            # Check if index is valid
+            if idx >= len(metadata_list):
+                logger.warning(f"FAISS index {idx} out of range for metadata list (size: {len(metadata_list)})")
+                out_of_sync_count += 1
+                continue
                 
             # Convert L2 distance to similarity score (0-1)
             similarity = 1 / (1 + score)
             
             if similarity >= score_threshold:
-                metadata = self.workspace_metadata[workspace_id][idx].copy()
+                metadata = metadata_list[idx].copy()
                 metadata['similarity'] = float(similarity)
                 metadata['rank'] = i + 1
                 results.append(metadata)
+        
+        # If too many results are out of sync and we have few results, rebuild the index
+        total_results = len(scores[0])
+        if out_of_sync_count > 0 and (out_of_sync_count >= total_results * 0.5 or len(results) == 0):
+            logger.warning(f"FAISS index severely out of sync for workspace {workspace_id}. Rebuilding...")
+            try:
+                rebuild_success = await self.rebuild_workspace_index(workspace_id)
+                if rebuild_success:
+                    logger.info("Index rebuilt successfully, retrying search...")
+                    # Retry search with rebuilt index - make sure to re-search with rebuilt index
+                    scores_retry, indices_retry = self.workspace_indices[workspace_id].search(query_embedding, k)
+                    
+                    # Check if we have any results after rebuild
+                    if len(scores_retry) == 0 or len(indices_retry) == 0 or len(scores_retry[0]) == 0:
+                        return []
+                    
+                    # Prepare results with rebuilt index
+                    results_retry = []
+                    metadata_list_retry = self.workspace_metadata[workspace_id]
+                    
+                    for i, (score, idx) in enumerate(zip(scores_retry[0], indices_retry[0])):
+                        if idx == -1:  # No more results
+                            break
+                        
+                        # Check if index is valid (should be now)
+                        if idx >= len(metadata_list_retry):
+                            logger.warning(f"FAISS index {idx} still out of range after rebuild (size: {len(metadata_list_retry)})")
+                            continue
+                            
+                        # Convert L2 distance to similarity score (0-1)
+                        similarity = 1 / (1 + score)
+                        
+                        if similarity >= score_threshold:
+                            metadata = metadata_list_retry[idx].copy()
+                            metadata['similarity'] = float(similarity)
+                            metadata['rank'] = i + 1
+                            results_retry.append(metadata)
+                    
+                    return results_retry
+                    
+            except Exception as e:
+                logger.error(f"Failed to rebuild index: {e}")
         
         return results
     
@@ -207,6 +262,56 @@ class VectorStoreManager:
             
         except Exception as e:
             logger.error(f"Failed to delete document {document_id}: {e}")
+            return False
+    
+    async def rebuild_workspace_index(self, workspace_id: str) -> bool:
+        """Rebuild FAISS index to match current metadata"""
+        try:
+            if workspace_id not in self.workspace_metadata:
+                logger.error(f"Workspace {workspace_id} not found")
+                return False
+            
+            metadata_list = self.workspace_metadata[workspace_id]
+            if not metadata_list:
+                # Empty workspace - create empty index
+                self.workspace_indices[workspace_id] = faiss.IndexFlatL2(self.embedding_dim)
+                await self.save_workspace(workspace_id)
+                logger.info(f"Rebuilt empty FAISS index for workspace {workspace_id}")
+                return True
+            
+            # Extract texts from metadata for re-embedding
+            texts = []
+            for metadata in metadata_list:
+                # Try 'text' first (current format), then 'content' (legacy format)
+                content = metadata.get('text', '') or metadata.get('content', '')
+                if content:
+                    texts.append(content)
+            
+            if not texts:
+                logger.warning(f"No content found in metadata for workspace {workspace_id}")
+                return False
+            
+            logger.info(f"Rebuilding FAISS index for workspace {workspace_id} with {len(texts)} documents")
+            
+            # Generate embeddings for all texts
+            embeddings = self.embedding_model.encode(texts, show_progress_bar=True)
+            embeddings_array = np.array(embeddings).astype('float32')
+            
+            # Create new FAISS index
+            new_index = faiss.IndexFlatL2(self.embedding_dim)
+            new_index.add(embeddings_array)
+            
+            # Replace the old index
+            self.workspace_indices[workspace_id] = new_index
+            
+            # Save to disk
+            await self.save_workspace(workspace_id)
+            
+            logger.info(f"✅ FAISS index rebuilt for workspace {workspace_id}: {new_index.ntotal} vectors")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to rebuild FAISS index for workspace {workspace_id}: {e}")
             return False
     
     async def get_workspace_stats(self, workspace_id: str) -> Dict[str, Any]:

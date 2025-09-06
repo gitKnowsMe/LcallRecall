@@ -145,16 +145,12 @@ class ServiceManager:
     async def _initialize_model_service(self) -> None:
         """Initialize LLM model service"""
         try:
-            # For auth testing, create a mock model manager
-            class MockModelManager:
-                def is_healthy(self):
-                    return True
-                def cleanup(self):
-                    pass
+            # Initialize real model manager
+            model_manager = ModelManager()
+            await model_manager.initialize()
             
-            model_manager = MockModelManager()
             self.register_service("model_manager", model_manager)
-            logger.info("Mock model service initialized (authentication testing)")
+            logger.info("✅ Real model service initialized")
             
         except Exception as e:
             logger.error(f"Failed to initialize model service: {e}")
@@ -163,16 +159,12 @@ class ServiceManager:
     async def _initialize_vector_service(self) -> None:
         """Initialize vector store service"""
         try:
-            # For auth testing, create a mock vector manager 
-            class MockVectorManager:
-                def is_healthy(self):
-                    return True
-                def cleanup(self):
-                    pass
+            # Initialize real vector store manager
+            vector_manager = VectorStoreManager()
+            await vector_manager.initialize()
             
-            vector_manager = MockVectorManager()
             self.register_service("vector_manager", vector_manager)
-            logger.info("Mock vector service initialized (authentication testing)")
+            logger.info("✅ Real vector service initialized")
             
         except Exception as e:
             logger.error(f"Failed to initialize vector service: {e}")
@@ -181,16 +173,11 @@ class ServiceManager:
     def _initialize_pdf_service(self) -> None:
         """Initialize PDF processing service"""
         try:
-            # Mock PDF service for auth testing
-            class MockPDFService:
-                def is_healthy(self):
-                    return True
-                def cleanup(self):
-                    pass
+            # Initialize real PDF service
+            pdf_service_instance = PDFService()
             
-            pdf_service = MockPDFService()
-            self.register_service("pdf_service", pdf_service)
-            logger.info("Mock PDF service initialized (authentication testing)")
+            self.register_service("pdf_service", pdf_service_instance)
+            logger.info("✅ Real PDF service initialized")
             
         except Exception as e:
             logger.error(f"Failed to initialize PDF service: {e}")
@@ -199,16 +186,11 @@ class ServiceManager:
     def _initialize_semantic_chunking_service(self) -> None:
         """Initialize semantic chunking service"""
         try:
-            # Mock chunking service for auth testing
-            class MockChunkingService:
-                def is_healthy(self):
-                    return True
-                def cleanup(self):
-                    pass
+            # Initialize real semantic chunking service
+            chunking_service = SemanticChunking(chunk_size=512, chunk_overlap=50)
             
-            chunking_service = MockChunkingService()
             self.register_service("semantic_chunking", chunking_service)
-            logger.info("Mock semantic chunking service initialized (authentication testing)")
+            logger.info("✅ Real semantic chunking service initialized")
             
         except Exception as e:
             logger.error(f"Failed to initialize semantic chunking service: {e}")
@@ -217,16 +199,22 @@ class ServiceManager:
     def _initialize_document_processor(self) -> None:
         """Initialize document processor"""
         try:
-            # Mock document processor for auth testing
-            class MockDocumentProcessor:
-                def is_healthy(self):
-                    return True
-                def cleanup(self):
-                    pass
+            # Get dependencies
+            pdf_service = self.get_service("pdf_service")
+            chunking_service = self.get_service("semantic_chunking")
+            vector_service = self.get_service("vector_manager")
+            database = self.get_service("metadata_db")
             
-            document_processor = MockDocumentProcessor()
+            # Initialize real document processor
+            document_processor = DocumentProcessor(
+                pdf_service=pdf_service,
+                chunking_service=chunking_service,
+                vector_service=vector_service,
+                database=database
+            )
+            
             self.register_service("document_processor", document_processor)
-            logger.info("Mock document processor initialized (authentication testing)")
+            logger.info("✅ Real document processor initialized")
             
         except Exception as e:
             logger.error(f"Failed to initialize document processor: {e}")
@@ -235,7 +223,25 @@ class ServiceManager:
     def _initialize_query_service(self) -> None:
         """Initialize query service"""
         try:
-            # Mock query service for auth testing
+            # Get dependencies
+            vector_service = self.get_service("vector_manager")
+            model_service = self.get_service("model_manager")
+            
+            # Initialize real query service
+            query_service = QueryService(
+                vector_service=vector_service,
+                llm_service=model_service,
+                default_top_k=5,
+                min_similarity_score=0.4
+            )
+            
+            self.register_service("query_service", query_service)
+            logger.info("✅ Real query service initialized")
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize query service: {e}")
+            
+            # Fallback to mock for development
             class MockQueryService:
                 def is_healthy(self):
                     return True
@@ -244,52 +250,19 @@ class ServiceManager:
             
             query_service = MockQueryService()
             self.register_service("query_service", query_service)
-            logger.info("Mock query service initialized (authentication testing)")
-            
-        except Exception as e:
-            logger.error(f"Failed to initialize query service: {e}")
-            raise ServiceInitializationError(f"Failed to initialize query service: {str(e)}")
+            logger.warning("Using mock query service as fallback")
     
     def _initialize_streaming_service(self) -> None:
         """Initialize streaming service"""
         try:
-            # Mock streaming service for auth testing
-            class MockStreamingService:
-                def is_healthy(self):
-                    return True
-                def cleanup(self):
-                    pass
-                
-                async def stream_query_response(self, workspace_id, query, user_id, **kwargs):
-                    """Mock streaming response for testing"""
-                    import asyncio
-                    import json
-                    
-                    # Send a simple mock response as SSE format
-                    response_text = f"This is a test response for query: '{query}'. Your LocalRecall chat is working! 🎉"
-                    
-                    # Send start event
-                    yield f"data: {json.dumps({'type': 'start', 'query': query})}\n\n"
-                    
-                    # Simulate streaming by sending chunks of the response
-                    words = response_text.split()
-                    current_text = ""
-                    for word in words:
-                        current_text += word + " "
-                        await asyncio.sleep(0.05)  # Small delay to simulate streaming
-                        yield f"data: {json.dumps({'type': 'token', 'token': word + ' '})}\n\n"
-                    
-                    # Send completion event
-                    yield f"data: {json.dumps({'type': 'done', 'response': current_text.strip(), 'sources': []})}\n\n"
-                    
-                def _format_sse_message(self, data, event_type="message"):
-                    """Format message as Server-Sent Events"""
-                    import json
-                    return f"data: {json.dumps(data)}\n\n"
+            # Get dependencies
+            query_service = self.get_service("query_service")
             
-            streaming_service = MockStreamingService()
+            # Initialize real streaming service
+            streaming_service = StreamingService(query_service)
+            
             self.register_service("streaming_service", streaming_service)
-            logger.info("Mock streaming service initialized (authentication testing)")
+            logger.info("✅ Real streaming service initialized")
             
         except Exception as e:
             logger.error(f"Failed to initialize streaming service: {e}")

@@ -92,7 +92,4 @@ Updated RAG Desktop Application Plan (v2)
 
   Implementation Priority
 
-  Phase 1: Core architecture (singleton model, workspace system)
-  Phase 2: Authentication + workspace mountingPhase 3: PDF processing + semantic chunking
-  Phase 4: Streaming query pipeline
-  Phase 5: Enhanced UI + Electron wrapper
+

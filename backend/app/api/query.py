@@ -6,7 +6,7 @@ import asyncio
 import logging
 from datetime import datetime
 
-from app.api.auth import get_current_user
+from app.api.auth import get_current_user_from_token
 from app.services.query_service import QueryError, NoResultsError
 from app.services.streaming_service import StreamingError
 
@@ -91,7 +91,7 @@ class StatsResponse(BaseModel):
 @router.post("/documents", response_model=QueryResponse)
 async def query_documents(
     request: QueryRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user_from_token)
 ) -> QueryResponse:
     """
     Query documents using RAG pipeline
@@ -101,8 +101,8 @@ async def query_documents(
     """
     try:
         # Extract user info
-        user_id = current_user["user_id"]
-        workspace_id = current_user["workspace_id"]
+        user_id = current_user.get("user_id") if isinstance(current_user, dict) else getattr(current_user, "user_id", None)
+        workspace_id = current_user.get("workspace_id") if isinstance(current_user, dict) else getattr(current_user, "workspace_id", None)
         
         # Execute query
         result = await query_service.query_documents(
@@ -161,7 +161,8 @@ async def stream_query_get(
     allowing EventSource clients to receive partial results as they're generated.
     """
     try:
-        # Validate query
+        # Validate query and ensure it's a string
+        query = str(query) if query is not None else ""
         if not query or not query.strip():
             raise HTTPException(
                 status_code=400,
@@ -196,8 +197,8 @@ async def stream_query_get(
             )
         
         # Extract user info
-        user_id = current_user["user_id"]
-        workspace_id = current_user["workspace_id"]
+        user_id = current_user.get("user_id") if isinstance(current_user, dict) else getattr(current_user, "user_id", None)
+        workspace_id = current_user.get("workspace_id") if isinstance(current_user, dict) else getattr(current_user, "workspace_id", None)
         
         # Create streaming generator
         async def generate_stream():
@@ -243,7 +244,7 @@ async def stream_query_get(
 @router.post("/stream")
 async def stream_query_post(
     request: StreamingQueryRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user_from_token)
 ) -> StreamingResponse:
     """
     Stream query response using Server-Sent Events
@@ -253,8 +254,8 @@ async def stream_query_post(
     """
     try:
         # Extract user info
-        user_id = current_user["user_id"]
-        workspace_id = current_user["workspace_id"]
+        user_id = current_user.get("user_id") if isinstance(current_user, dict) else getattr(current_user, "user_id", None)
+        workspace_id = current_user.get("workspace_id") if isinstance(current_user, dict) else getattr(current_user, "workspace_id", None)
         
         # Create streaming generator
         async def generate_stream():
@@ -300,7 +301,7 @@ async def stream_query_post(
 @router.post("/search", response_model=SearchResponse)
 async def search_documents(
     request: SearchRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user_from_token)
 ) -> SearchResponse:
     """
     Search documents without LLM generation
@@ -310,8 +311,8 @@ async def search_documents(
     """
     try:
         # Extract user info
-        user_id = current_user["user_id"]
-        workspace_id = current_user["workspace_id"]
+        user_id = current_user.get("user_id") if isinstance(current_user, dict) else getattr(current_user, "user_id", None)
+        workspace_id = current_user.get("workspace_id") if isinstance(current_user, dict) else getattr(current_user, "workspace_id", None)
         
         # Execute search
         results = await query_service.search_similar_documents(
@@ -345,7 +346,7 @@ async def search_documents(
 async def get_query_history(
     limit: int = 50,
     offset: int = 0,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user_from_token)
 ) -> QueryHistoryResponse:
     """
     Get query history for current user and workspace
@@ -354,8 +355,8 @@ async def get_query_history(
     """
     try:
         # Extract user info
-        user_id = current_user["user_id"]
-        workspace_id = current_user["workspace_id"]
+        user_id = current_user.get("user_id") if isinstance(current_user, dict) else getattr(current_user, "user_id", None)
+        workspace_id = current_user.get("workspace_id") if isinstance(current_user, dict) else getattr(current_user, "workspace_id", None)
         
         # Validate pagination parameters
         if limit < 1 or limit > 100:
@@ -386,7 +387,7 @@ async def get_query_history(
 
 @router.get("/stats", response_model=StatsResponse)
 async def get_search_stats(
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user_from_token)
 ) -> StatsResponse:
     """
     Get search statistics for current workspace
@@ -414,7 +415,7 @@ async def get_search_stats(
 @router.post("/search/stream")
 async def stream_search(
     request: SearchRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user_from_token)
 ) -> StreamingResponse:
     """
     Stream search results without LLM generation
@@ -424,8 +425,8 @@ async def stream_search(
     """
     try:
         # Extract user info
-        user_id = current_user["user_id"]
-        workspace_id = current_user["workspace_id"]
+        user_id = current_user.get("user_id") if isinstance(current_user, dict) else getattr(current_user, "user_id", None)
+        workspace_id = current_user.get("workspace_id") if isinstance(current_user, dict) else getattr(current_user, "workspace_id", None)
         
         # Create streaming generator
         async def generate_search_stream():
