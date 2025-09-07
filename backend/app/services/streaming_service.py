@@ -152,7 +152,7 @@ class StreamingService:
                 }
                 yield self._format_sse_message(progress_data, event_type="progress")
             
-            # Stream the response content
+            # Stream the response content - improved buffering
             buffer = ""
             last_flush_time = time.time()
             
@@ -160,13 +160,14 @@ class StreamingService:
                 buffer += chunk
                 current_time = time.time()
                 
-                # Flush buffer if size exceeded or time interval passed
+                # More aggressive flushing for immediate response
                 should_flush = (
-                    len(buffer) >= self.chunk_size or
-                    (current_time - last_flush_time) >= self.flush_interval
+                    len(buffer) >= 10 or  # Very small buffer for immediate streaming
+                    (current_time - last_flush_time) >= 0.1 or  # Quick flush interval
+                    '\n' in chunk or ' ' in chunk  # Flush on natural word boundaries
                 )
                 
-                if should_flush and buffer.strip():
+                if should_flush and buffer:  # Remove .strip() to allow whitespace
                     yield self._format_sse_message(buffer, event_type="chunk")
                     buffer = ""
                     last_flush_time = current_time

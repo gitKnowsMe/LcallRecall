@@ -108,9 +108,9 @@ class TestModelManager:
         
         prompt = manager.create_rag_prompt(query, context)
         
-        assert "<|system|>" in prompt
-        assert "<|user|>" in prompt
-        assert "<|assistant|>" in prompt
+        assert "CONTEXT:" in prompt
+        assert "QUESTION:" in prompt
+        assert "ANSWER:" in prompt
         assert query in prompt
         assert context in prompt
     

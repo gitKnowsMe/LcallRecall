@@ -81,7 +81,7 @@ class ModelManager:
         """Check if running in mock mode"""
         return self._model == "mock"
     
-    async def generate(self, prompt: str, max_tokens: int = 512) -> str:
+    async def generate(self, prompt: str, max_tokens: int = 1024, temperature: float = 0.7) -> str:
         """Generate response (non-streaming)"""
         if not self.is_loaded():
             raise RuntimeError("Model not loaded")
@@ -98,6 +98,7 @@ class ModelManager:
                 self._generate_sync,
                 prompt,
                 max_tokens,
+                temperature,
                 False
             )
             return response
@@ -106,7 +107,7 @@ class ModelManager:
             logger.error(f"Generation failed: {e}")
             raise RuntimeError(f"Generation failed: {e}")
     
-    async def generate_stream(self, prompt: str, max_tokens: int = 512) -> AsyncGenerator[str, None]:
+    async def generate_stream(self, prompt: str, max_tokens: int = 1024, temperature: float = 0.7) -> AsyncGenerator[str, None]:
         """Generate streaming response"""
         if not self.is_loaded():
             raise RuntimeError("Model not loaded")
@@ -133,6 +134,7 @@ class ModelManager:
                 self._generate_stream_sync,
                 prompt,
                 max_tokens,
+                temperature,
                 token_queue,
                 loop  # Pass the loop to the thread
             )
@@ -156,14 +158,15 @@ class ModelManager:
             logger.error(f"Streaming generation failed: {e}")
             raise RuntimeError(f"Streaming generation failed: {e}")
     
-    def _generate_sync(self, prompt: str, max_tokens: int, stream: bool) -> str:
+    def _generate_sync(self, prompt: str, max_tokens: int, temperature: float, stream: bool) -> str:
         """Synchronous generation (runs in thread pool)"""
         response = self._model(
             prompt,
             max_tokens=max_tokens,
+            temperature=temperature,
             stream=stream,
             echo=False,
-            stop=["</s>", "\n\nUser:", "\n\nHuman:"]
+            stop=[]  # Empty list allows natural generation end
         )
         
         if stream:
@@ -171,15 +174,16 @@ class ModelManager:
         else:
             return response['choices'][0]['text'].strip()
     
-    def _generate_stream_sync(self, prompt: str, max_tokens: int, token_queue: asyncio.Queue, loop):
+    def _generate_stream_sync(self, prompt: str, max_tokens: int, temperature: float, token_queue: asyncio.Queue, loop):
         """Synchronous streaming generation (runs in thread pool)"""
         try:
             stream = self._model(
                 prompt,
                 max_tokens=max_tokens,
+                temperature=temperature,
                 stream=True,
                 echo=False,
-                stop=["</s>", "\n\nUser:", "\n\nHuman:"]
+                stop=[]  # Empty list allows natural generation end
             )
             
             for chunk in stream:
@@ -211,18 +215,15 @@ class ModelManager:
                 pass  # Ignore errors when signaling end during exception handling
     
     def create_rag_prompt(self, query: str, context: str) -> str:
-        """Create RAG prompt for Phi-2"""
-        return f"""<|system|>
-You are a helpful AI assistant. Use the provided context to answer the user's question accurately. If the context doesn't contain relevant information, say so clearly.
+        """Create RAG prompt for Phi-2 - Enhanced instruction format"""
+        return f"""You are a helpful assistant. Answer the question below using the provided context. Provide a comprehensive, detailed response of 5-7 sentences that thoroughly explains the topic. If the context doesn't contain the answer, say "I cannot find this information in the provided context."
 
-Context:
+CONTEXT:
 {context}
 
-<|user|>
-{query}
+QUESTION: {query}
 
-<|assistant|>
-"""
+ANSWER: Let me provide a detailed explanation:"""
     
     async def cleanup(self):
         """Cleanup resources"""
