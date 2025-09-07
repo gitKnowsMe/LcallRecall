@@ -459,7 +459,7 @@ export function QueryInterface() {
             </div>
           ))}
 
-          {isLoading && (
+          {isLoading && !visibleMessages.some(msg => msg.isStreaming) && (
             <div className="flex gap-3 items-start">
               <div className="flex-shrink-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center">
                 <Bot className="h-4 w-4 text-primary-foreground" data-testid="bot-icon" />
