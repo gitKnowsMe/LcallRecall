@@ -165,8 +165,8 @@ export function DocumentUpload() {
         </div>
       </div>
 
-      <div className="flex-1 p-6 space-y-6">
-        <div>
+      <div className="flex-1 p-6 min-h-0 flex flex-col">
+        <div className="flex-shrink-0">
           <h2 className="text-lg font-medium text-foreground mb-2">Upload Documents</h2>
           <p className="text-sm text-muted-foreground mb-4">
             Upload PDFs, Markdown files, text documents, and more to expand your knowledge base.
@@ -174,23 +174,23 @@ export function DocumentUpload() {
 
           <div
             {...getRootProps()}
-            className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${
+            className={`border-2 border-dashed rounded-lg p-3 text-center cursor-pointer transition-colors ${
               isDragActive ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
             }`}
           >
             <input {...getInputProps()} />
-            <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <div className="space-y-2">
-              <p className="text-lg font-medium text-foreground">Drop files here or click to browse</p>
-              <p className="text-sm text-muted-foreground">Supports PDF, Markdown, TXT, DOCX, and more</p>
+            <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-1" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Drop files here or click to browse</p>
+              <p className="text-xs text-muted-foreground mt-1">PDF, Markdown, TXT, DOCX, and more</p>
             </div>
-            <Button className="mt-4">Browse Files</Button>
+            <Button className="mt-2" size="sm">Browse Files</Button>
           </div>
         </div>
 
         {/* Error Display */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-2">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-2 flex-shrink-0 mt-6">
             <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
             <p className="text-red-700">{error}</p>
             <Button
@@ -206,7 +206,7 @@ export function DocumentUpload() {
 
         {/* Uploading Files */}
         {uploadingFiles.length > 0 && (
-          <div>
+          <div className="flex-shrink-0 mt-6">
             <h3 className="text-md font-medium text-foreground mb-2">Uploading</h3>
             <Card className="bg-card">
               <CardContent className="p-0">
@@ -215,7 +215,7 @@ export function DocumentUpload() {
                     <div
                       key={uploadingFile.id}
                       className={`flex items-center justify-between p-4 ${
-                        index !== uploadingFiles.length - 1 ? "border-b border-border" : "
+                        index !== uploadingFiles.length - 1 ? "border-b border-border" : ""
                       }`}
                     >
                       <div className="flex items-center gap-3 flex-1">
@@ -251,8 +251,8 @@ export function DocumentUpload() {
           </div>
         )}
 
-        <div>
-          <h2 className="text-lg font-medium text-foreground mb-4">Document Library</h2>
+        <div className="flex flex-col flex-1 min-h-0 mt-4">
+          <h2 className="text-lg font-medium text-foreground mb-3">Document Library</h2>
 
           {isLoading ? (
             <div className="text-center py-8">
@@ -260,45 +260,47 @@ export function DocumentUpload() {
               <p className="text-muted-foreground">Loading documents...</p>
             </div>
           ) : (
-            <Card className="bg-card">
-              <CardContent className="p-0">
+            <Card className="bg-card flex-1 min-h-0 flex flex-col max-h-[600px]">
+              <CardContent className="p-0 flex-1 min-h-0 flex flex-col">
                 {documents.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     No documents uploaded yet.
                   </div>
                 ) : (
-                  <div className="space-y-0">
-                    {documents.map((doc, index) => (
-                      <div
-                        key={doc.id}
-                        className={`flex items-center justify-between p-4 hover:bg-muted/50 transition-colors ${
-                          index !== documents.length - 1 ? "border-b border-border" : "
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-primary/20 rounded">
-                            {getStatusIcon(doc.processing_status)}
-                          </div>
-                          <div>
-                            <div className="font-medium text-foreground">{doc.title || doc.filename}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {formatFileSize(doc.file_size)} • {formatDate(doc.created_at)}
-                              {doc.processing_status === 'processing' && ' • Processing'}
-                              {doc.processing_status === 'error' && ' • Error'}
+                  <div className="flex-1 min-h-0 overflow-y-auto max-h-[550px]" style={{maxHeight: '550px', overflowY: 'auto'}}>
+                    <div className="space-y-0">
+                      {documents.map((doc, index) => (
+                        <div
+                          key={doc.id}
+                          className={`flex items-center justify-between p-4 hover:bg-muted/50 transition-colors ${
+                            index !== documents.length - 1 ? "border-b border-border" : ""
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-primary/20 rounded">
+                              {getStatusIcon(doc.processing_status)}
+                            </div>
+                            <div>
+                              <div className="font-medium text-foreground">{doc.title || doc.filename}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {formatFileSize(doc.file_size)} • {formatDate(doc.upload_date)}
+                                {doc.processing_status === 'processing' && ' • Processing'}
+                                {doc.processing_status === 'error' && ' • Error'}
+                              </div>
                             </div>
                           </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteDocument(doc.id)}
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                            aria-label={`Delete ${doc.title || doc.filename}`}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteDocument(doc.id)}
-                          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                          aria-label={`Delete ${doc.title || doc.filename}`}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
               </CardContent>
