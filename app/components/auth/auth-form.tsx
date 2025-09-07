@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Shield, User, Mail, Lock, AlertCircle } from "lucide-react"
+import { User, Mail, Lock, AlertCircle } from "lucide-react"
+import { SacredGeometryIcon } from "@/components/ui/sacred-geometry-icon"
 
 export function AuthForm() {
   const { login, register, error, clearError, isLoading } = useAuth()
@@ -70,7 +71,7 @@ export function AuthForm() {
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 mb-4">
-            <Shield className="h-8 w-8 text-primary" />
+            <SacredGeometryIcon className="h-8 w-8 text-primary" />
             <h1 className="text-2xl font-bold text-foreground">LocalRecall</h1>
           </div>
           <p className="text-muted-foreground">

@@ -6,7 +6,8 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, Bot, Copy, ThumbsUp, ThumbsDown, Mic, AlertCircle, RefreshCw, ChevronUp } from "lucide-react"
+import { Send, Copy, ThumbsUp, ThumbsDown, Mic, AlertCircle, RefreshCw, ChevronUp } from "lucide-react"
+import { SacredGeometryIcon } from "@/components/ui/sacred-geometry-icon"
 import { desktopAPI } from "@/lib/desktop-api"
 
 interface Message {
@@ -366,11 +367,11 @@ export function QueryInterface() {
             {visibleMessages.map((message) => (
             <div key={message.id} className="space-y-3">
               <div className="flex gap-3 items-start">
-                <div className="flex-shrink-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center">
                   {message.type === "assistant" ? (
-                    <Bot className="h-4 w-4 text-primary-foreground" data-testid="bot-icon" />
+                    <SacredGeometryIcon className="h-10 w-10 text-primary" data-testid="bot-icon" />
                   ) : (
-                    <div className="w-4 h-4 bg-primary-foreground rounded-full" />
+                    <div className="w-4 h-4 bg-primary rounded-full" />
                   )}
                 </div>
 
@@ -461,8 +462,8 @@ export function QueryInterface() {
 
           {isLoading && !visibleMessages.some(msg => msg.isStreaming) && (
             <div className="flex gap-3 items-start">
-              <div className="flex-shrink-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                <Bot className="h-4 w-4 text-primary-foreground" data-testid="bot-icon" />
+              <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center">
+                <SacredGeometryIcon className="h-8 w-8 text-primary" data-testid="bot-icon" />
               </div>
               <div className="flex-1">
                 <div className="bg-card border border-border rounded-lg p-4">
