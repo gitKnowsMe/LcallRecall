@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { MessageSquare, Upload, Database, Brain, Search, Settings, LogOut } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 interface SidebarProps {
   activeView: string
@@ -9,6 +10,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activeView, onViewChange }: SidebarProps) {
+  const { logout } = useAuth()
   const menuItems = [
     { id: "chat", label: "Chat", icon: MessageSquare },
     { id: "upload", label: "Upload", icon: Upload },
@@ -73,6 +75,7 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
         <Button
           variant="ghost"
           className="w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-foreground/5 mt-2"
+          onClick={logout}
         >
           <LogOut className="h-4 w-4" />
           Log out

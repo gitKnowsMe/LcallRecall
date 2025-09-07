@@ -8,14 +8,12 @@ import { WorkspaceManager } from "@/components/workspace/workspace-manager"
 import { StatusDashboard } from "@/components/status/status-dashboard"
 import { desktopAPI } from "@/lib/desktop-api"
 import { useAuth } from "@/lib/auth-context"
-import { Button } from "@/components/ui/button"
-import { LogOut, User } from "lucide-react"
 
 type ActiveView = "chat" | "upload" | "knowledge" | "memory" | "search" | "settings"
 type BackendStatus = "connecting" | "connected" | "disconnected" | "error"
 
 export function MainApp() {
-  const { user, logout } = useAuth()
+  const { } = useAuth()
   const [activeView, setActiveView] = useState<ActiveView>("chat")
   const [backendStatus, setBackendStatus] = useState<BackendStatus>("connecting")
   const [backendPort, setBackendPort] = useState(8000)
@@ -137,24 +135,6 @@ export function MainApp() {
             <span className="text-muted-foreground text-xs">{status.detail}</span>
           </div>
           
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-sm">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">
-                {user?.username || user?.email || 'User'}
-              </span>
-            </div>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={logout}
-              className="h-8 w-8 p-0"
-              title="Logout"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
         </div>
       </div>
 
