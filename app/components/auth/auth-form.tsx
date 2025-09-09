@@ -74,7 +74,7 @@ export function AuthForm() {
           <div className="flex items-center justify-center gap-2 mb-4">
             <AIChipIcon className="h-8 w-8 text-primary" />
             {/* <SacredGeometryIcon className="h-8 w-8 text-primary" /> Disabled - keeping for reference */}
-            <h1 className="text-2xl font-bold text-foreground">LocalRecall</h1>
+            <h1 className="text-2xl font-bold text-foreground">Local Recall</h1>
           </div>
           <p className="text-muted-foreground">
             Your private AI assistant
