@@ -1,14 +1,14 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { MessageSquare, Upload, Database, Brain, Search, Settings, LogOut } from "lucide-react"
+import { MessageSquare, Upload, Database, Brain, Search, Settings, LogOut, Bot } from "lucide-react"
 import { AIChipIcon } from "@/components/ui/ai-chip-icon"
 // import { SacredGeometryIcon } from "@/components/ui/sacred-geometry-icon" // Disabled - keeping for reference
 import { useAuth } from "@/lib/auth-context"
 
 interface SidebarProps {
   activeView: string
-  onViewChange: (view: "chat" | "upload" | "knowledge" | "memory" | "search" | "settings") => void
+  onViewChange: (view: "chat" | "upload" | "knowledge" | "memory" | "llm" | "search" | "settings") => void
 }
 
 export function Sidebar({ activeView, onViewChange }: SidebarProps) {
@@ -18,6 +18,7 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
     { id: "upload", label: "Upload", icon: Upload },
     { id: "knowledge", label: "Knowledge", icon: Database },
     { id: "memory", label: "Memory", icon: Brain },
+    { id: "llm", label: "LLM", icon: Bot },
     { id: "search", label: "Search", icon: Search },
     { id: "settings", label: "Settings", icon: Settings },
   ]
@@ -52,7 +53,7 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
                 }`}
                 onClick={() => onViewChange(item.id as any)}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className={item.id === 'llm' ? "h-[18px] w-[18px]" : "h-4 w-4"} />
                 {item.label}
               </Button>
             )

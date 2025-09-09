@@ -45,21 +45,26 @@ class DocumentProcessor:
         try:
             logger.info(f"Starting document processing: {file_path}")
             
-            # Extract text from PDF
-            text_content = await self.pdf_service.extract_text(file_path)
-            if not text_content:
+            # Extract text from PDF (with page information)
+            pdf_data = self.pdf_service.extract_text_from_pdf(file_path)
+            if not pdf_data or not pdf_data.get("text"):
                 raise ValueError("No text content extracted from document")
             
             # Generate document ID
-            document_id = self._generate_document_id(file_path, text_content)
+            document_id = self._generate_document_id(file_path, pdf_data["text"])
             
             # Check if document already exists
             if self._document_exists(document_id):
                 logger.info(f"Document already processed: {document_id}")
                 return await self._get_document_info(document_id)
             
-            # Chunk text content
-            chunks = self.chunking_service.chunk_text(text_content, document_id)
+            # Chunk text content with page tracking
+            pages = pdf_data.get("pages", [])
+            if pages:
+                chunks = self.chunking_service.chunk_pages(pages, document_id)
+            else:
+                # Fallback to old method if pages not available
+                chunks = self.chunking_service.chunk_text(pdf_data["text"], document_id)
             if not chunks:
                 raise ValueError("No chunks generated from document")
             
@@ -71,7 +76,8 @@ class DocumentProcessor:
                     'document_id': document_id,
                     'chunk_id': chunk['chunk_id'],
                     'start_char': chunk['start_char'],
-                    'end_char': chunk['end_char']
+                    'end_char': chunk['end_char'],
+                    'page': chunk.get('page_number', 1)
                 } for chunk in chunks]
             )
             
@@ -81,7 +87,7 @@ class DocumentProcessor:
                 file_path=file_path,
                 workspace_id=workspace_id,
                 user_id=user_id,
-                text_content=text_content[:1000],  # Store preview
+                text_content=pdf_data["text"][:1000],  # Store preview
                 chunk_count=len(chunks),
                 vector_ids=vector_ids
             )
@@ -217,13 +223,19 @@ class DocumentProcessor:
             """, (document_id, file_path, workspace_id, user_id, text_content,
                   chunk_count, datetime.utcnow().isoformat(), 'processed'))
             
-            # Store chunk records
+            # Store chunk records with page information
             for i, vector_id in enumerate(vector_ids):
+                chunk = chunks[i] if i < len(chunks) else {}
+                page_number = chunk.get('page_number', 1)
+                start_char = chunk.get('start_char', 0)
+                end_char = chunk.get('end_char', 0)
+                text_preview = chunk.get('text', '')[:200] if chunk.get('text') else ""
+                
                 cursor.execute("""
                     INSERT INTO document_chunks
                     (document_id, chunk_id, vector_id, start_char, end_char, text_preview)
                     VALUES (?, ?, ?, ?, ?, ?)
-                """, (document_id, i, vector_id, 0, 0, ""))  # Simplified for now
+                """, (document_id, i, vector_id, start_char, end_char, text_preview))
             
             self.database.commit()
             

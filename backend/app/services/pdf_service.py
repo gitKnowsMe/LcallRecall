@@ -51,10 +51,12 @@ class PDFService:
             try:
                 doc = fitz.open(file_path)
                 
-                # Extract text from all pages
+                # Extract text from all pages with page tracking
+                pages_text = []
                 full_text = ""
-                for page in doc:
+                for page_num, page in enumerate(doc, 1):
                     page_text = page.get_text()
+                    pages_text.append({"page_number": page_num, "text": page_text})
                     full_text += page_text
                 
                 # Calculate statistics
@@ -71,6 +73,7 @@ class PDFService:
                 
                 return {
                     "text": full_text,
+                    "pages": pages_text,
                     "metadata": metadata
                 }
                 
@@ -106,10 +109,12 @@ class PDFService:
             try:
                 doc = fitz.open(stream=pdf_bytes, filetype="pdf")
                 
-                # Extract text from all pages
+                # Extract text from all pages with page tracking
+                pages_text = []
                 full_text = ""
-                for page in doc:
+                for page_num, page in enumerate(doc, 1):
                     page_text = page.get_text()
+                    pages_text.append({"page_number": page_num, "text": page_text})
                     full_text += page_text
                 
                 # Calculate statistics
@@ -126,6 +131,7 @@ class PDFService:
                 
                 return {
                     "text": full_text,
+                    "pages": pages_text,
                     "metadata": metadata
                 }
                 

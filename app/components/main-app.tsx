@@ -4,12 +4,13 @@ import { useState, useEffect } from "react"
 import { Sidebar } from "@/components/layout/sidebar"
 import { DocumentUpload } from "@/components/documents/document-upload"
 import { QueryInterface } from "@/components/query/query-interface"
+import { LLMChat } from "@/components/llm/llm-chat"
 import { WorkspaceManager } from "@/components/workspace/workspace-manager"
 import { StatusDashboard } from "@/components/status/status-dashboard"
 import { desktopAPI } from "@/lib/desktop-api"
 import { useAuth } from "@/lib/auth-context"
 
-type ActiveView = "chat" | "upload" | "knowledge" | "memory" | "search" | "settings"
+type ActiveView = "chat" | "upload" | "knowledge" | "memory" | "llm" | "search" | "settings"
 type BackendStatus = "connecting" | "connected" | "disconnected" | "error"
 
 export function MainApp() {
@@ -63,6 +64,8 @@ export function MainApp() {
         return <WorkspaceManager />
       case "memory":
         return <StatusDashboard />
+      case "llm":
+        return <LLMChat />
       case "search":
         return <QueryInterface />
       case "settings":

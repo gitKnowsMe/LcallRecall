@@ -170,17 +170,23 @@ async def lifespan(app: FastAPI):
         # Setup API routes after initialization
         if api_integration:
             # Include routers with proper service injection
-            from app.api import auth, documents, query
+            from app.api import auth, documents, query, llm
             
             app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
             app.include_router(documents.router, prefix="/documents", tags=["Documents"])
             app.include_router(query.router, prefix="/query", tags=["Query"])
+            app.include_router(llm.router, prefix="/llm", tags=["LLM"])
             
             # Initialize query router with services
             if hasattr(query, 'initialize_query_router') and service_manager:
                 query_service = service_manager.get_service("query_service")
                 streaming_service = service_manager.get_service("streaming_service")
                 query.initialize_query_router(query_service, streaming_service)
+            
+            # Initialize LLM router with model manager
+            if hasattr(llm, 'initialize_llm_router') and service_manager:
+                model_manager = service_manager.get_service("model_manager")
+                llm.initialize_llm_router(model_manager)
         
         logger.info("🎉 LocalRecall RAG API startup completed")
         

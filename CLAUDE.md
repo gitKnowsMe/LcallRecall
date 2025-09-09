@@ -9,7 +9,7 @@ LocalRecall is a cross-platform desktop RAG (Retrieval-Augmented Generation) app
 ### Architecture Overview
 
 **Hybrid Desktop Application:**
-- **Frontend**: Next.js React app with TypeScript, Tailwind CSS, and Radix UI components
+- **Frontend**: Next.js 14 React app with TypeScript, Tailwind CSS v4, and Radix UI components
 - **Backend**: FastAPI Python server with SQLite databases and FAISS vector storage  
 - **Desktop Shell**: Electron wrapper with IPC communication bridge
 - **Local AI**: Phi-2 GGUF model via llama-cpp-python (singleton pattern)
@@ -20,6 +20,8 @@ LocalRecall is a cross-platform desktop RAG (Retrieval-Augmented Generation) app
 - **Workspace Isolation**: Per-user workspaces prevent data cross-contamination
 - **Streaming Support**: Server-Sent Events for real-time AI responses
 - **TDD Approach**: Comprehensive test coverage (425+ tests across backend/frontend)
+- **Component-Based**: React components with shadcn/ui design system
+- **Core Managers**: ConfigManager, DatabaseManager, ServiceManager for centralized control
 
 ## Development Commands
 
@@ -55,26 +57,38 @@ cd app && npm run test:coverage
 # Start frontend development server
 cd app && npm run dev
 
+# Lint frontend code
+cd app && npm run lint
+
 # Build frontend for production
 cd app && npm run build
+
+# Start production frontend server
+cd app && npm start
 ```
 
 ### Desktop Application Development
 ```bash
-# Install all dependencies
+# Install all dependencies (including frontend dependencies via postinstall)
 npm install
 
 # Start full development environment (backend + frontend + electron)
 npm run dev
 
-# Start just electron with existing frontend
-npm run electron:dev
+# Individual development servers
+npm run backend:dev        # Backend only on port 8000
+npm run frontend:dev       # Frontend only on port 3000  
+npm run electron:dev       # Electron + frontend
 
-# Build desktop application
-npm run build
+# Production builds
+npm run frontend:build     # Build Next.js frontend
+npm run build              # Build complete application
+npm run dist               # Create distribution packages
 
-# Create distribution packages
-npm run dist
+# Electron-specific commands
+npm run electron           # Start electron (requires built frontend)
+npm run electron:pack      # Package without distribution
+npm run electron:dist      # Create platform-specific distributions
 ```
 
 ## Critical Configuration
@@ -99,18 +113,26 @@ Update `backend/app/services/llm_service.py` if model path changes.
 ## Core Services Architecture
 
 **Backend Service Stack:**
-- `ServiceManager`: Centralized dependency injection and service orchestration
+- `ServiceManager`: Centralized dependency injection and service orchestration (app/core/service_manager.py)
+- `ConfigManager`: Application configuration management (app/core/config_manager.py)
+- `DatabaseManager`: SQLite database connection management (app/core/database_manager.py)
 - `ModelManager`: Singleton Phi-2 model loading and text generation (saves 2-4GB RAM)
 - `VectorStoreManager`: Workspace-based FAISS indices with embedding generation
 - `AuthService`: JWT authentication with workspace management
-- `DocumentProcessor`: PDF processing with semantic chunking via spaCy
-- `QueryService`: RAG pipeline with vector search and LLM generation
+- `DocumentProcessor`: PDF processing with semantic chunking via spaCy (app/services/document_processor.py)
+- `QueryService`: RAG pipeline with vector search and LLM generation (app/services/query_service.py)
+- `StreamingService`: Real-time response streaming (app/services/streaming_service.py)
 
 **Frontend Architecture:**
+- Next.js 14 with App Router and React Server Components
+- TypeScript with strict type checking
+- Tailwind CSS v4 with shadcn/ui components (Radix UI primitives)
 - React Context API for authentication state management
-- Desktop API client with IPC communication to backend
+- Desktop API client with IPC communication to backend (Electron preload)
 - Component-based UI with comprehensive Jest test coverage
 - Real-time streaming via EventSource for AI responses
+- Custom UI components: AI chip icons, sacred geometry branding
+- **Dual Chat System**: RAG Chat (QueryInterface) + Direct LLM Chat (LLMChat)
 
 ## Key Integration Points
 
@@ -122,12 +144,15 @@ Update `backend/app/services/llm_service.py` if model path changes.
 **Frontend ↔ Backend API:**
 - Authentication: `/api/auth/*` endpoints
 - Documents: `/api/documents/*` with file upload
-- Query: `/api/query/*` with streaming support via SSE
+- RAG Query: `/api/query/*` with streaming support via SSE
+- **Direct LLM**: `/api/llm/*` with streaming support via SSE (no RAG)
 
 **Testing Strategy:**
-- Backend: pytest with comprehensive unit/integration tests
-- Frontend: Jest + React Testing Library with mocking
+- Backend: pytest with comprehensive unit/integration tests (`backend/tests/`)
+- Frontend: Jest + React Testing Library with mocking (`app/components/__tests__/`)
 - TDD approach with 425+ total tests across the stack
+- Async testing support with pytest-asyncio
+- Mock implementations for external dependencies
 
 ## Common Debugging
 
@@ -146,8 +171,199 @@ Update `backend/app/services/llm_service.py` if model path changes.
 - Verify backend subprocess startup
 - Test IPC communication between main/renderer processes
 
+### RAG Pipeline Troubleshooting
+
+**"No response received" Errors:**
+1. Check backend logs for 500 Internal Server Error
+2. Verify LLM service `stop` parameter is `[]` not `None`
+3. Ensure model is loaded (check `/status` endpoint)
+4. Test individual components: vector search → LLM generation → streaming
+
+**Empty or Truncated Responses:**
+1. Check streaming service buffer logic in `streaming_service.py`
+2. Verify `max_tokens` parameter (should be 1024 for longer responses)
+3. Ensure buffer flushing conditions aren't too restrictive
+4. Remove `.strip()` conditions that may block whitespace chunks
+
+**Short Single-Sentence Responses:**
+1. Update RAG prompt to include explicit length instruction (5-7 sentences)
+2. Increase `max_tokens` from default 512 to 1024
+3. Add temperature parameter (0.7) for more natural responses
+4. Verify prompt format includes "Let me provide a detailed explanation:"
+
+**Sources Found But No AI Response:**
+1. Check streaming service `should_flush` conditions
+2. Reduce buffer size to 10 bytes for immediate streaming
+3. Add word boundary flushing (`'\n' in chunk or ' ' in chunk`)
+4. Remove restrictive `.strip()` filtering on buffer content
+
 ## Model Integration Notes
 
 The application uses a singleton pattern for the Phi-2 model to optimize memory usage. The model loads once at startup and is reused across all requests. If you need to modify model loading, update the ModelManager service and ensure proper async/await patterns are maintained for thread safety.
 
+### RAG Prompt Format
+
+The application uses an enhanced instruction format for RAG queries (updated from chat-style format to prevent multi-turn conversations):
+
+```
+You are a helpful assistant. Answer the question below using the provided context. Provide a comprehensive, detailed response of 5-7 sentences that thoroughly explains the topic. If the context doesn't contain the answer, say "I cannot find this information in the provided context."
+
+CONTEXT:
+{context}
+
+QUESTION: {query}
+
+ANSWER: Let me provide a detailed explanation:
+```
+
+**Generation Parameters:**
+- **Max Tokens**: 1024 (increased from 512 for longer responses)
+- **Temperature**: 0.7 (for more natural, varied responses)
+- **Stop Tokens**: `[]` (empty list allows natural generation end without premature truncation)
+
+**Benefits of this format:**
+- Prevents multi-turn conversation generation
+- Clear section delineation with explicit length guidance
+- Handles missing information gracefully
+- Generates comprehensive 5-7 sentence responses
+- More focused, single-turn responses
+
+### Streaming Response Architecture
+
+The streaming service uses aggressive buffering for real-time response delivery:
+
+**Buffer Configuration:**
+- **Buffer Size**: 10 bytes (very small for immediate streaming)
+- **Flush Interval**: 0.1 seconds (quick response)
+- **Word Boundaries**: Flushes on newlines and spaces for natural breaks
+- **Whitespace Handling**: Preserves whitespace chunks (removed `.strip()` filtering)
+
+**Stream Flow:**
+1. Vector search finds relevant document chunks
+2. RAG prompt generated with context and query
+3. LLM generates response via `generate_stream()`
+4. Streaming service buffers and flushes tokens via Server-Sent Events
+5. Frontend receives real-time chunks and displays progressive response
+
 Document processing uses semantic chunking via spaCy to preserve context across chunk boundaries. Vector embeddings use sentence-transformers/all-MiniLM-L6-v2 with 384-dimensional vectors stored in workspace-specific FAISS indices.
+
+## Direct LLM Chat Module
+
+LocalRecall includes a separate direct LLM chat interface alongside the RAG-based document chat, providing users with both constrained (RAG) and unconstrained (direct) AI conversation modes.
+
+### LLM Chat Architecture
+
+**Complete Separation from RAG:**
+- **RAG Chat**: `QueryInterface` → `/api/query/*` → Document search + context injection → Phi-2
+- **LLM Chat**: `LLMChat` → `/api/llm/*` → Direct Phi-2 communication (no document search)
+
+**Key Features:**
+- Direct access to Phi-2 model without RAG pipeline overhead
+- Real-time streaming responses via Server-Sent Events
+- Separate chat history storage (`localrecall_llm_chat_history`)
+- Distinctive yellow "Direct Phi-2" branding vs blue "Local AI" for RAG
+- System prompt formatting for quality responses
+
+### LLM Endpoints
+
+**Core Endpoints:**
+- `POST /api/llm/chat` - Direct LLM generation with response metadata
+- `GET /api/llm/stream` - Real-time streaming (query params + token auth)  
+- `POST /api/llm/stream` - Real-time streaming (JSON body + JWT auth)
+- `GET /api/llm/health` - Service health check with model status
+- `GET /api/llm/info` - Model information and capabilities
+
+**Quality Control:**
+- **System Prompt**: `"You are Phi-2, a helpful AI assistant. Answer the user's question directly and concisely.\n\nUser: {question}\nAssistant:"`
+- **Stop Tokens**: `["\n\n\n", "User:", "Human:", "Q:", "Question:", "A:", "Answer:", "Assistant:"]`
+- **Parameters**: max_tokens=1024, temperature=0.7 (configurable)
+
+### UI Implementation
+
+**Navigation:**
+- LLM menu item in sidebar (Zap icon between Memory and Search)
+- Routing handled in `main-app.tsx` with "llm" view type
+
+**Component Structure:**
+- `LLMChat` component based on `QueryInterface` but stripped of RAG features
+- No document search, sources attribution, or context injection
+- Separate localStorage for chat history persistence
+- Consistent UI patterns with RAG chat but distinctive branding
+
+### Development Notes
+
+**Adding LLM Functionality:**
+- Backend endpoints already exist and are registered
+- Frontend component follows same patterns as RAG chat
+- Desktop API includes `createLLMStream()` method for EventSource streaming
+- Quality improvements include system prompts and stop tokens to prevent hallucinations
+
+**Testing LLM Module:**
+- Health check: `curl http://localhost:8000/llm/health`
+- Stream test: Use LLM menu in desktop app
+- Response quality: System prompts prevent off-topic responses
+- Error handling: Proper fallbacks for connection issues
+
+## Development Dependencies
+
+### Python Backend Stack
+- **Framework**: FastAPI 0.104.1 + Uvicorn for ASGI server
+- **AI/ML**: llama-cpp-python 2.19, sentence-transformers 2.7.0, torch 2.1.0
+- **Vector DB**: faiss-cpu 1.7.4 for semantic search
+- **Document Processing**: PyMuPDF 1.23.8, spaCy 3.7.2 for semantic chunking
+- **Database**: SQLAlchemy 2.0.23 + aiosqlite for async SQLite operations
+- **Auth**: bcrypt 4.1.2, python-jose for JWT tokens
+- **Testing**: pytest 7.4.3, pytest-asyncio 0.21.1, pytest-mock 3.12.0
+
+### Frontend Stack  
+- **Framework**: Next.js 14.2.16 with App Router and React 18
+- **UI**: Tailwind CSS v4, Radix UI primitives, shadcn/ui components
+- **Forms**: react-hook-form 7.60.0 + zod 3.25.67 validation
+- **Testing**: Jest 30.1.3, @testing-library/react 16.3.0
+- **Icons**: lucide-react 0.454.0 for UI icons
+
+### Desktop Stack
+- **Runtime**: Electron 27.0.0 for cross-platform desktop
+- **Build**: electron-builder 24.6.4 for distribution packages
+- **Development**: concurrently 8.2.2, wait-on 7.0.1 for multi-process dev
+
+## Key File Locations
+
+### Backend Entry Points
+- `backend/app/main.py`: FastAPI application setup and configuration loading
+- `backend/app/core/service_manager.py`: Centralized service dependency injection
+- `backend/app/services/llm_service.py`: Phi-2 model integration and text generation
+- `backend/app/services/query_service.py`: RAG pipeline orchestration
+
+### Frontend Entry Points  
+- `app/app/layout.tsx`: Root layout with theme provider and global styles
+- `app/components/main-app.tsx`: Main application component with auth routing
+- `app/components/auth/auth-form.tsx`: Combined login/register authentication
+- `app/components/query/query-interface.tsx`: RAG chat interface with streaming
+- `app/components/llm/llm-chat.tsx`: Direct LLM chat interface (no RAG)
+
+### Desktop Integration
+- `electron/main.js`: Electron main process with backend subprocess management
+- `electron/preload.js`: Secure IPC bridge between renderer and main processes
+- `electron/menu.js`: Application menu configuration
+
+## Component Guidelines
+
+### Backend Services
+- All services follow dependency injection pattern via ServiceManager
+- Services are singletons initialized at application startup
+- Async/await patterns used throughout for non-blocking operations
+- Configuration loaded via ConfigManager with environment-specific overrides
+
+### Frontend Components
+- Use TypeScript with strict type checking
+- Follow shadcn/ui patterns for consistent styling
+- Implement proper loading and error states
+- Use React Context for global state (auth, theme)
+- Include Jest tests in `__tests__/` subdirectories
+
+### UI Patterns
+- Tailwind CSS v4 utility classes for styling
+- Radix UI primitives for accessible components
+- Custom icons: AI chip branding, sacred geometry elements
+- Dark mode support via next-themes provider

@@ -5,10 +5,14 @@
 
   Goal: Fix what's broken
 
-  1. Fix Phi-2 Model Loading
+  1. Fix Phi-2 Model Loading ✅ COMPLETED
     - Locate or download the model file
     - Update path in backend/app/services/llm_service.py:16
     - Test model initialization works
+    - FIXED: Updated RAG prompt format to prevent multi-turn responses
+    - FIXED: Streaming service buffer logic (sources found but no AI response)
+    - FIXED: Response length issue (increased max_tokens to 1024, added temperature)
+    - FIXED: 500 Internal Server Error for new uploads (stop parameter compatibility)
   2. Fix Document Processor Integration
     - Remove mock document_processor_api.py
     - Wire real document_processor.py into API endpoints
@@ -23,6 +27,7 @@
 
   4. Service Integration
     - Fix service initialization in main.py
+    
     - Wire: PDF upload → extract text → chunk → embed →
   store in FAISS
     - Connect query → FAISS search → context → Phi-2 →

@@ -35,6 +35,36 @@ class SemanticChunking:
                 logger.warning("spaCy model not available, using simple text splitting")
                 self._nlp = False
     
+    def chunk_pages(self, pages: List[Dict[str, Any]], document_id: str = None) -> List[Dict[str, Any]]:
+        """
+        Split pages into semantic chunks while preserving page information
+        
+        Args:
+            pages: List of page dictionaries with 'page_number' and 'text' keys
+            document_id: Optional document identifier
+            
+        Returns:
+            List of chunk dictionaries with text, page number, and metadata
+        """
+        all_chunks = []
+        for page_data in pages:
+            page_num = page_data['page_number']
+            page_text = page_data['text']
+            
+            if not page_text or not page_text.strip():
+                continue
+                
+            # Chunk this page's text
+            page_chunks = self.chunk_text(page_text, document_id)
+            
+            # Add page number to each chunk
+            for chunk in page_chunks:
+                chunk['page_number'] = page_num
+                
+            all_chunks.extend(page_chunks)
+            
+        return all_chunks
+
     def chunk_text(self, text: str, document_id: str = None) -> List[Dict[str, Any]]:
         """
         Split text into semantic chunks

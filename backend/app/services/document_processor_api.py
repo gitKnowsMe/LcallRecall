@@ -65,18 +65,23 @@ class DocumentProcessor:
                     temp_file.write(content)
                     temp_file_path = temp_file.name
                 
-                # Process PDF - extract text
+                # Process PDF - extract text with page information
                 logger.info(f"Extracting text from PDF: {file.filename}")
                 pdf_result = pdf_service.extract_text_from_pdf(temp_file_path)
                 text_content = pdf_result["text"]
                 pdf_metadata = pdf_result["metadata"]
+                pages = pdf_result.get("pages", [])
                 
                 if not text_content or not text_content.strip():
                     raise DocumentProcessingError("No text content found in PDF")
                 
-                # Chunk the text
-                logger.info("Chunking text content")
-                chunks = self.chunking_service.chunk_text(text_content, document_id=f"doc_{content_hash[:8]}")
+                # Chunk the text with page information
+                logger.info("Chunking text content with page tracking")
+                if pages:
+                    chunks = self.chunking_service.chunk_pages(pages, document_id=f"doc_{content_hash[:8]}")
+                else:
+                    # Fallback to old method if pages not available
+                    chunks = self.chunking_service.chunk_text(text_content, document_id=f"doc_{content_hash[:8]}")
                 
                 if not chunks:
                     raise DocumentProcessingError("No chunks generated from document")
@@ -91,7 +96,8 @@ class DocumentProcessor:
                 chunk_metadata = [{
                     'document_id': content_hash[:8],
                     'chunk_index': chunk['chunk_id'],
-                    'filename': file.filename
+                    'filename': file.filename,
+                    'page': chunk.get('page_number', 1)
                 } for chunk in chunks]
                 
                 vector_ids = await vector_store.add_documents(
@@ -127,7 +133,7 @@ class DocumentProcessor:
                         workspace_id=self.workspace_id,
                         chunk_text=chunk['text'][:1000],  # Store preview
                         chunk_index=chunk['chunk_id'],
-                        page_number=1,  # Simplified for now
+                        page_number=chunk.get('page_number', 1),
                         char_count=chunk['length'],
                         vector_id=vector_id,
                         created_at=datetime.utcnow()

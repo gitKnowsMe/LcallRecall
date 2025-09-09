@@ -276,6 +276,27 @@ class DesktopAPI {
     return eventSource;
   }
 
+  // Direct LLM streaming without RAG
+  createLLMStream(prompt: string, options: { max_tokens?: number; temperature?: number } = {}) {
+    const params = new URLSearchParams({ 
+      prompt, 
+      max_tokens: String(options.max_tokens || 1024),
+      temperature: String(options.temperature || 0.7)
+    });
+    
+    const token = this.getAuthToken();
+    if (token) {
+      params.append('token', token);
+    }
+    
+    const url = `${this.baseURL}/llm/stream?${params}`;
+    
+    // Create EventSource for direct LLM streaming
+    const eventSource = new EventSource(url);
+    
+    return eventSource;
+  }
+
   async search(query: string, options: { top_k?: number } = {}) {
     return await this.makeRequest('/query/search', {
       method: 'POST',
