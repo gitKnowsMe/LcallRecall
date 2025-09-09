@@ -100,12 +100,13 @@ The application requires the Phi-2 GGUF model at:
 Update `backend/app/services/llm_service.py` if model path changes.
 
 ### Database Architecture
-- **Authentication DB**: `backend/data/auth.db` - Encrypted user credentials
+- **Authentication DB**: `backend/data/auth.db` - Username-based user credentials (no email required)
 - **Metadata DB**: `backend/data/global_metadata.db` - Document metadata
 - **Workspace Indices**: `backend/data/workspaces/` - Per-workspace FAISS vector stores
 
 ### Security Architecture
-- JWT token-based authentication with bcrypt password hashing
+- Username-only authentication system with JWT tokens and bcrypt password hashing
+- No email requirement - simplified registration for local desktop application
 - Workspace isolation prevents cross-user data access
 - Context isolation in Electron with secure IPC bridge
 - Local-only operation (no external API calls)
@@ -118,7 +119,7 @@ Update `backend/app/services/llm_service.py` if model path changes.
 - `DatabaseManager`: SQLite database connection management (app/core/database_manager.py)
 - `ModelManager`: Singleton Phi-2 model loading and text generation (saves 2-4GB RAM)
 - `VectorStoreManager`: Workspace-based FAISS indices with embedding generation
-- `AuthService`: JWT authentication with workspace management
+- `AuthService`: Username-based JWT authentication with workspace management (no email)
 - `DocumentProcessor`: PDF processing with semantic chunking via spaCy (app/services/document_processor.py)
 - `QueryService`: RAG pipeline with vector search and LLM generation (app/services/query_service.py)
 - `StreamingService`: Real-time response streaming (app/services/streaming_service.py)
@@ -142,7 +143,7 @@ Update `backend/app/services/llm_service.py` if model path changes.
 - Secure IPC bridge in `electron/preload.js`
 
 **Frontend ↔ Backend API:**
-- Authentication: `/api/auth/*` endpoints
+- Authentication: `/api/auth/*` endpoints (username-based, no email required)
 - Documents: `/api/documents/*` with file upload
 - RAG Query: `/api/query/*` with streaming support via SSE
 - **Direct LLM**: `/api/llm/*` with streaming support via SSE (no RAG)
@@ -338,7 +339,7 @@ LocalRecall includes a separate direct LLM chat interface alongside the RAG-base
 ### Frontend Entry Points  
 - `app/app/layout.tsx`: Root layout with theme provider and global styles
 - `app/components/main-app.tsx`: Main application component with auth routing
-- `app/components/auth/auth-form.tsx`: Combined login/register authentication
+- `app/components/auth/auth-form.tsx`: Username-only login/register authentication
 - `app/components/query/query-interface.tsx`: RAG chat interface with streaming
 - `app/components/llm/llm-chat.tsx`: Direct LLM chat interface (no RAG)
 
