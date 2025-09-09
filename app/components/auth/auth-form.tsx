@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { User, Mail, Lock, AlertCircle } from "lucide-react"
+import { User, Lock, AlertCircle } from "lucide-react"
 import { AIChipIcon } from "@/components/ui/ai-chip-icon"
 // import { SacredGeometryIcon } from "@/components/ui/sacred-geometry-icon" // Disabled - keeping for reference
 
