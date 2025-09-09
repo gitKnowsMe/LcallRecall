@@ -2,7 +2,8 @@
 
 import { Button } from "@/components/ui/button"
 import { MessageSquare, Upload, Database, Brain, Search, Settings, LogOut } from "lucide-react"
-import { SacredGeometryIcon } from "@/components/ui/sacred-geometry-icon"
+import { AIChipIcon } from "@/components/ui/ai-chip-icon"
+// import { SacredGeometryIcon } from "@/components/ui/sacred-geometry-icon" // Disabled - keeping for reference
 import { useAuth } from "@/lib/auth-context"
 
 interface SidebarProps {
@@ -25,8 +26,9 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
     <div className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
       <div className="p-4 border-b border-sidebar-border">
         <div className="flex items-center gap-2">
-          <SacredGeometryIcon className="h-7 w-7 text-sidebar-primary" />
-          <span className="font-semibold text-sidebar-foreground">Personal AI</span>
+          <AIChipIcon className="h-7 w-7 text-sidebar-primary" />
+          {/* <SacredGeometryIcon className="h-7 w-7 text-sidebar-primary" /> Disabled - keeping for reference */}
+          <span className="font-semibold text-sidebar-foreground">Local Recall</span>
         </div>
       </div>
 
