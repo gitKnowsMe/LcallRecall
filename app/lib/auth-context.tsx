@@ -5,8 +5,7 @@ import { desktopAPI } from '@/lib/desktop-api'
 
 interface User {
   id: string
-  email: string
-  username?: string
+  username: string
   workspaceId?: number
 }
 
@@ -15,7 +14,7 @@ interface AuthContextType {
   isAuthenticated: boolean
   isLoading: boolean
   login: (username: string, password: string) => Promise<void>
-  register: (email: string, password: string, username?: string) => Promise<void>
+  register: (username: string, password: string) => Promise<void>
   logout: () => Promise<void>
   error: string | null
   clearError: () => void
@@ -73,7 +72,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser({
           id: response.user_id.toString(),
           username: response.username,
-          email: '', // Email not provided in login response
           workspaceId: response.workspace_id
         })
       } else {
@@ -88,15 +86,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
-  const register = async (email: string, password: string, username?: string) => {
+  const register = async (username: string, password: string) => {
     try {
       setIsLoading(true)
       setError(null)
       
-      const response = await desktopAPI.register(email, password, username)
+      const response = await desktopAPI.register(username, password)
       
-      if (response.user) {
-        setUser(response.user)
+      if (response.access_token && response.username) {
+        // Create user object from response data
+        setUser({
+          id: response.user_id.toString(),
+          username: response.username,
+          workspaceId: response.workspace_id
+        })
       } else {
         throw new Error('Invalid response from registration')
       }

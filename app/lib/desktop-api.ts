@@ -201,10 +201,10 @@ class DesktopAPI {
     return response;
   }
 
-  async register(email: string, password: string, username?: string) {
+  async register(username: string, password: string) {
     const response = await this.makeRequest('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, username }),
+      body: JSON.stringify({ username, password }),
     });
     
     if (response.access_token) {

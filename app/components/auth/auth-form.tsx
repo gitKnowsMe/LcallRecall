@@ -16,10 +16,9 @@ export function AuthForm() {
   const { login, register, error, clearError, isLoading } = useAuth()
   const [loginForm, setLoginForm] = useState({ username: "", password: "" })
   const [registerForm, setRegisterForm] = useState({ 
-    email: "", 
+    username: "", 
     password: "", 
-    confirmPassword: "", 
-    username: "" 
+    confirmPassword: "" 
   })
   const [activeTab, setActiveTab] = useState("login")
 
@@ -42,7 +41,7 @@ export function AuthForm() {
     e.preventDefault()
     clearError()
 
-    if (!registerForm.email || !registerForm.password) {
+    if (!registerForm.username || !registerForm.password) {
       return
     }
 
@@ -55,7 +54,7 @@ export function AuthForm() {
     }
 
     try {
-      await register(registerForm.email, registerForm.password, registerForm.username)
+      await register(registerForm.username, registerForm.password)
     } catch (error) {
       // Error is handled by the context
     }
@@ -155,7 +154,7 @@ export function AuthForm() {
               <TabsContent value="register">
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="register-username">Username (Optional)</Label>
+                    <Label htmlFor="register-username">Username</Label>
                     <div className="relative">
                       <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -164,22 +163,6 @@ export function AuthForm() {
                         placeholder="Choose a username"
                         value={registerForm.username}
                         onChange={(e) => setRegisterForm({ ...registerForm, username: e.target.value })}
-                        className="pl-10"
-                        disabled={isLoading}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="register-email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="register-email"
-                        type="email"
-                        placeholder="Enter your email"
-                        value={registerForm.email}
-                        onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
                         className="pl-10"
                         disabled={isLoading}
                         required
@@ -235,7 +218,7 @@ export function AuthForm() {
                     className="w-full" 
                     disabled={
                       isLoading || 
-                      !registerForm.email || 
+                      !registerForm.username || 
                       !registerForm.password ||
                       registerForm.password !== registerForm.confirmPassword ||
                       registerForm.password.length < 8
