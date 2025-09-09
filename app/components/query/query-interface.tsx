@@ -6,7 +6,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, Copy, ThumbsUp, ThumbsDown, Mic, AlertCircle, RefreshCw, ChevronUp, Workflow } from "lucide-react"
+import { Send, Copy, ThumbsUp, ThumbsDown, AlertCircle, RefreshCw, ChevronUp, Workflow } from "lucide-react"
 import { AIChipIcon } from "@/components/ui/ai-chip-icon"
 import { desktopAPI } from "@/lib/desktop-api"
 
@@ -153,8 +153,23 @@ export function QueryInterface() {
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       setInputValue('')
+    } else if (e.key === 'Enter') {
+      if (e.shiftKey) {
+        // Shift+Enter: Allow new line (default behavior)
+        return
+      } else {
+        // Enter: Submit form
+        e.preventDefault()
+        if (!isLoading && inputValue.trim()) {
+          const form = e.currentTarget.closest('form')
+          if (form) {
+            const submitEvent = new Event('submit', { bubbles: true, cancelable: true })
+            form.dispatchEvent(submitEvent)
+          }
+        }
+      }
     }
-  }, [])
+  }, [isLoading, inputValue])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -504,37 +519,30 @@ export function QueryInterface() {
         </Button>
       )}
 
-      {/* Fixed Input Area */}
-      <div className="flex-shrink-0 p-6 border-t border-border">
+      {/* Fixed Input Area - Enlarged */}
+      <div className="flex-shrink-0 p-6 pb-12 border-t border-border" style={{ minHeight: '140px' }}>
         <div className="max-w-4xl mx-auto">
-          <form onSubmit={handleSubmit} className="flex gap-3 items-end">
-            <div className="flex-1 relative">
-              <Input
-                ref={inputRef}
+          <form onSubmit={handleSubmit} className="flex gap-3 items-start">
+            <div className="flex-1">
+              <textarea
+                ref={inputRef as any}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask me anything about your documents..."
                 disabled={isLoading}
-                className="pr-10"
+                className="w-full min-h-[84px] px-3 py-3 text-sm border-2 border-input rounded-md bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                 aria-label="Type your message here"
                 role="textbox"
+                style={{ fontFamily: 'inherit', lineHeight: '1.5' }}
               />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
-              >
-                <Mic className="h-4 w-4" />
-              </Button>
             </div>
-            <Button type="submit" disabled={isLoading || !inputValue.trim()} className="gap-2" aria-label="Send message">
+            <Button type="submit" disabled={isLoading || !inputValue.trim()} className="gap-2 mt-2" aria-label="Send message">
               <Send className="h-4 w-4" />
               Send
             </Button>
           </form>
-          <p className="text-xs text-muted-foreground mt-2">Press Enter to send, Shift+Enter for new line</p>
+          <p className="text-xs text-muted-foreground mt-1">Press Enter to send, Shift+Enter for new line</p>
         </div>
       </div>
     </div>
