@@ -1,4 +1,3 @@
 // Entry point for Electron application
-// Redirects to the actual main file in electron/main.js
-
-module.exports = require('./electron/main.js');
+// This file exists to satisfy electron-builder's file structure expectations
+require('./electron/main.js');

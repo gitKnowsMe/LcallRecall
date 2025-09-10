@@ -47,9 +47,11 @@
     "appId": "com.localrecall.app",
     "productName": "LocalRecall",
     "copyright": "Copyright © 2025 LocalRecall Team",
+    "asar": false,
     "directories": {
       "output": "dist",
-      "buildResources": "resources"
+      "buildResources": "resources",
+      "app": "."
     },
     "files": [
       "index.js",
@@ -57,7 +59,9 @@
       "app/build/**/*",
       "package.json",
       "!**/node_modules/**/*",
-      "!backend/**/*"
+      "!backend/**/*",
+      "!app/package.json",
+      "!app/node_modules/**/*"
     ],
     "extraResources": [
       {
