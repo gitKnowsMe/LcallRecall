@@ -14,6 +14,33 @@ declare global {
       closeWindow?: () => void;
       minimizeWindow?: () => void;
       maximizeWindow?: () => void;
+      
+      // Model detection methods
+      detectModel: () => Promise<{
+        found: boolean;
+        path: string | null;
+        info: any;
+        error?: string;
+      }>;
+      selectModelFile: () => Promise<{
+        success: boolean;
+        path?: string;
+        info?: any;
+        error?: string;
+        canceled?: boolean;
+      }>;
+      validateModel: (modelPath: string) => Promise<{
+        valid: boolean;
+        info?: any;
+        error?: string;
+      }>;
+      getDownloadInstructions: () => Promise<any>;
+      ensureModelsDirectory: () => Promise<{
+        success: boolean;
+        path?: string;
+        error?: string;
+      }>;
+      openExternal: (url: string) => Promise<void>;
     };
   }
 }
@@ -330,6 +357,77 @@ class DesktopAPI {
     if (this.isDesktopApp() && window.electronAPI && window.electronAPI.maximizeWindow) {
       window.electronAPI.maximizeWindow();
     }
+  }
+
+  // Model detection and management (Electron only)
+  async detectModel() {
+    if (this.isDesktopApp() && window.electronAPI && window.electronAPI.detectModel) {
+      return await window.electronAPI.detectModel();
+    }
+    
+    // Fallback for web version
+    return {
+      found: false,
+      path: null,
+      info: null,
+      error: 'Model detection not available in web version'
+    };
+  }
+
+  async selectModelFile() {
+    if (this.isDesktopApp() && window.electronAPI && window.electronAPI.selectModelFile) {
+      return await window.electronAPI.selectModelFile();
+    }
+    
+    return {
+      success: false,
+      error: 'File selection not available in web version'
+    };
+  }
+
+  async validateModel(modelPath: string) {
+    if (this.isDesktopApp() && window.electronAPI && window.electronAPI.validateModel) {
+      return await window.electronAPI.validateModel(modelPath);
+    }
+    
+    return {
+      valid: false,
+      error: 'Model validation not available in web version'
+    };
+  }
+
+  async getDownloadInstructions() {
+    if (this.isDesktopApp() && window.electronAPI && window.electronAPI.getDownloadInstructions) {
+      return await window.electronAPI.getDownloadInstructions();
+    }
+    
+    return {
+      modelName: 'Phi-2 Instruct GGUF',
+      provider: 'Hugging Face',
+      url: 'https://huggingface.co/microsoft/phi-2/tree/main',
+      recommendedFile: 'phi-2.Q4_K_M.gguf',
+      estimatedSize: '1.4GB'
+    };
+  }
+
+  async ensureModelsDirectory() {
+    if (this.isDesktopApp() && window.electronAPI && window.electronAPI.ensureModelsDirectory) {
+      return await window.electronAPI.ensureModelsDirectory();
+    }
+    
+    return {
+      success: false,
+      error: 'Directory creation not available in web version'
+    };
+  }
+
+  async openExternal(url: string) {
+    if (this.isDesktopApp() && window.electronAPI && window.electronAPI.openExternal) {
+      return await window.electronAPI.openExternal(url);
+    }
+    
+    // Fallback: regular window.open
+    window.open(url, '_blank');
   }
 }
 
