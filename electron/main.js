@@ -45,12 +45,32 @@ class BackendManager {
     this.starting = true;
 
     try {
-      const backendPath = path.join(__dirname, '..', 'backend');
-      const pythonCmd = os.platform() === 'win32' ? 'python' : 'python3';
+      let backendExecutable, backendArgs, backendCwd;
       
-      this.process = spawn(pythonCmd, ['-m', 'uvicorn', 'app.main:app', '--host', BACKEND_HOST, '--port', BACKEND_PORT.toString()], {
-        cwd: backendPath,
-        stdio: ['pipe', 'pipe', 'pipe']
+      if (isDev) {
+        // Development mode: Use Python + uvicorn
+        backendCwd = path.join(__dirname, '..', 'backend');
+        const pythonCmd = os.platform() === 'win32' ? 'python' : 'python3';
+        backendExecutable = pythonCmd;
+        backendArgs = ['-m', 'uvicorn', 'app.main:app', '--host', BACKEND_HOST, '--port', BACKEND_PORT.toString()];
+      } else {
+        // Production mode: Use bundled executable
+        backendExecutable = path.join(process.resourcesPath, 'backend', 'localrecall-backend');
+        backendArgs = ['--host', BACKEND_HOST, '--port', BACKEND_PORT.toString()];
+        backendCwd = path.dirname(backendExecutable);
+        
+        // Set user data path for production databases
+        const userDataPath = app.getPath('userData');
+        process.env.LOCALRECALL_USER_DATA = userDataPath;
+        
+        console.log(`Production backend path: ${backendExecutable}`);
+        console.log(`User data path: ${userDataPath}`);
+      }
+      
+      this.process = spawn(backendExecutable, backendArgs, {
+        cwd: backendCwd,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env }
       });
 
       this.process.stdout.on('data', (data) => {

@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from contextlib import asynccontextmanager
 from typing import Dict, Any
 from fastapi import FastAPI, HTTPException
@@ -32,15 +33,31 @@ api_integration: APIIntegration = None
 
 def load_default_config() -> Dict[str, Any]:
     """Load default configuration for LocalRecall"""
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    data_dir = os.path.join(base_dir, "data")
+    # Determine if we're in production (bundled) or development
+    is_production = getattr(sys, 'frozen', False) or os.getenv("LOCALRECALL_USER_DATA") is not None
+    
+    if is_production:
+        # Production: Use user data directory from environment variable
+        user_data_path = os.getenv("LOCALRECALL_USER_DATA")
+        if not user_data_path:
+            # Fallback for direct executable run
+            import tempfile
+            user_data_path = os.path.join(tempfile.gettempdir(), "LocalRecall")
+        data_dir = user_data_path
+        os.makedirs(data_dir, exist_ok=True)
+        os.makedirs(os.path.join(data_dir, "workspaces"), exist_ok=True)
+    else:
+        # Development: Use relative data directory
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        data_dir = os.path.join(base_dir, "data")
     
     return {
         "app": {
             "name": "LocalRecall RAG API",
             "version": "1.0.0",
             "description": "Private local RAG application with Phi-2 and FAISS",
-            "environment": os.getenv("ENVIRONMENT", "development")
+            "environment": os.getenv("ENVIRONMENT", "production" if is_production else "development"),
+            "is_production": is_production
         },
         "database": {
             "auth_db_path": os.path.join(data_dir, "auth.db"),
@@ -51,7 +68,8 @@ def load_default_config() -> Dict[str, Any]:
             "create_tables": True
         },
         "model": {
-            "path": "/Users/singularity/local AI/models/phi-2-instruct-Q4_K_M.gguf",
+            "path": "/Users/singularity/local AI/models/phi-2-instruct-Q4_K_M.gguf" if not is_production else None,
+            "auto_detect": is_production,
             "max_context_length": 4096,
             "batch_size": 512,
             "preload": False  # Set to True for production

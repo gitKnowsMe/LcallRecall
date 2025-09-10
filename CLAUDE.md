@@ -37,6 +37,9 @@ cd backend && python -m pytest tests/integration/ -v
 # Run specific test file
 cd backend && python -m pytest tests/unit/test_model_manager.py -v
 
+# Run with coverage report
+cd backend && python -m pytest tests/ --cov=app --cov-report=html
+
 # Start backend development server
 cd backend && python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
@@ -308,20 +311,21 @@ LocalRecall includes a separate direct LLM chat interface alongside the RAG-base
 ## Development Dependencies
 
 ### Python Backend Stack
-- **Framework**: FastAPI 0.104.1 + Uvicorn for ASGI server
-- **AI/ML**: llama-cpp-python 2.19, sentence-transformers 2.7.0, torch 2.1.0
+- **Framework**: FastAPI 0.104.1 + Uvicorn 0.24.0 for ASGI server
+- **AI/ML**: llama-cpp-python 0.2.19, sentence-transformers 2.7.0, torch 2.1.0
 - **Vector DB**: faiss-cpu 1.7.4 for semantic search
 - **Document Processing**: PyMuPDF 1.23.8, spaCy 3.7.2 for semantic chunking
 - **Database**: SQLAlchemy 2.0.23 + aiosqlite for async SQLite operations
-- **Auth**: bcrypt 4.1.2, python-jose for JWT tokens
-- **Testing**: pytest 7.4.3, pytest-asyncio 0.21.1, pytest-mock 3.12.0
+- **Auth**: bcrypt 4.1.2, python-jose[cryptography] 3.3.0 for JWT tokens
+- **Testing**: pytest 7.4.3, pytest-asyncio 0.21.1, pytest-mock 3.12.0, httpx 0.25.2
 
 ### Frontend Stack  
 - **Framework**: Next.js 14.2.16 with App Router and React 18
 - **UI**: Tailwind CSS v4, Radix UI primitives, shadcn/ui components
 - **Forms**: react-hook-form 7.60.0 + zod 3.25.67 validation
-- **Testing**: Jest 30.1.3, @testing-library/react 16.3.0
+- **Testing**: Jest 30.1.3, @testing-library/react 16.3.0, @testing-library/jest-dom 6.8.0
 - **Icons**: lucide-react 0.454.0 for UI icons
+- **Utilities**: class-variance-authority 0.7.1, clsx 2.1.1, tailwind-merge 2.5.5
 
 ### Desktop Stack
 - **Runtime**: Electron 27.0.0 for cross-platform desktop

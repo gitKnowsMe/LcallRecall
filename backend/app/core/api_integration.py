@@ -4,7 +4,11 @@ import time
 from typing import Dict, Any, Optional
 from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
+try:
+    from fastapi.middleware.trustedhost import TrustedHostMiddleware
+except ImportError:
+    # Fallback for older FastAPI versions
+    TrustedHostMiddleware = None
 from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -171,7 +175,7 @@ class APIIntegration:
         
         # Trusted host middleware
         trusted_hosts = api_config.get("trusted_hosts", ["localhost", "127.0.0.1"])
-        if trusted_hosts:
+        if trusted_hosts and TrustedHostMiddleware is not None:
             self.app.add_middleware(
                 TrustedHostMiddleware,
                 allowed_hosts=trusted_hosts
