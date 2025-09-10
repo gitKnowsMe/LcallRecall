@@ -85,13 +85,20 @@ npm run electron:dev       # Electron + frontend
 
 # Production builds
 npm run frontend:build     # Build Next.js frontend
-npm run build              # Build complete application
-npm run dist               # Create distribution packages
+npm run backend:build      # Bundle backend with PyInstaller
+npm run build:production   # Build frontend + backend for production
+npm run build              # Build complete application (development)
+npm run dist               # Create production DMG distribution
 
 # Electron-specific commands
 npm run electron           # Start electron (requires built frontend)
 npm run electron:pack      # Package without distribution
 npm run electron:dist      # Create platform-specific distributions
+
+# Production deployment scripts
+./scripts/build-production.sh   # Complete production build with verification
+./scripts/build-backend.sh      # Bundle Python backend standalone
+./scripts/test-build.sh         # Verify build artifacts and functionality
 ```
 
 ## Critical Configuration
@@ -372,3 +379,92 @@ LocalRecall includes a separate direct LLM chat interface alongside the RAG-base
 - Radix UI primitives for accessible components
 - Custom icons: AI chip branding, sacred geometry elements
 - Dark mode support via next-themes provider
+
+## Production Deployment
+
+LocalRecall includes a comprehensive production deployment system that transforms the development setup into a professional macOS application users can download and install immediately.
+
+### Production Build Architecture
+
+**Target User Experience:**
+- Download LocalRecall.dmg (150-200MB)
+- Drag to Applications folder
+- Launch → Professional setup wizard appears
+- Auto-detect or guide Phi-2 model installation
+- Create username-only account
+- Ready to use - no dependencies required
+
+### Build Process (3 Phases Complete)
+
+**Phase 1: Backend Bundling** ✅
+- PyInstaller creates 191MB standalone executable with all Python dependencies
+- Includes PyTorch, FAISS, FastAPI, llama-cpp-python, sentence-transformers
+- Self-contained backend eliminates Python installation requirement
+- Production paths use macOS user data directory
+
+**Phase 2: Model Detection & Setup Wizard** ✅
+- Intelligent Phi-2 model auto-detection in common locations
+- Professional 3-step setup wizard (welcome, model setup, completion)
+- Electron IPC integration for native file dialogs and model validation
+- Setup state management with localStorage persistence
+- Download instructions and model validation
+
+**Phase 3: Electron Build Configuration** ✅
+- Comprehensive package.json build configuration for DMG distribution
+- macOS entitlements for ML libraries, JIT compilation, file system access
+- DMG installer configuration with custom background and drag-to-Applications
+- Cross-architecture support (Intel x64 + Apple Silicon ARM64)
+- Production build scripts with verification and testing
+
+### Key Production Files
+
+**Build Scripts:**
+- `scripts/build-production.sh`: Complete production build orchestration
+- `scripts/build-backend.sh`: PyInstaller bundling with dependency detection
+- `scripts/test-build.sh`: Build verification and artifact testing
+
+**Configuration:**
+- `resources/entitlements.mac.plist`: macOS security entitlements for AI models
+- `package.json` build section: Electron builder configuration
+- `electron/model-manager.js`: Phi-2 auto-detection service
+
+**Setup Wizard:**
+- `app/components/setup/setup-wizard.tsx`: Main wizard component
+- `app/lib/setup-context.tsx`: First-run state management
+- `app/components/setup/*`: Individual wizard steps
+
+### Production Commands
+
+```bash
+# Complete production build
+npm run dist                    # Build frontend + backend + DMG
+./scripts/build-production.sh   # Full build with verification
+
+# Individual build steps
+npm run build:production        # Frontend + backend only
+npm run backend:build          # Bundle Python backend standalone
+npm run frontend:build         # Build React frontend
+
+# Testing and verification
+./scripts/test-build.sh        # Verify build artifacts
+npm run electron:pack          # Test packaging without DMG
+```
+
+### Deployment Status
+
+- **Phase 1-3**: Complete (Backend bundling, Setup wizard, Build configuration)
+- **Phase 4-5**: In progress (Complete build process, User experience testing)
+- **Distribution**: Ready for DMG creation and testing
+- **Code Signing**: Configured but requires Apple Developer certificates
+
+### Build Verification Checklist
+
+✅ Frontend compiles to static files  
+✅ Backend bundles to 191MB standalone executable  
+✅ Model detection finds existing Phi-2 models  
+✅ Setup wizard renders with proper styling  
+✅ Electron configuration includes all necessary files  
+✅ DMG configuration with proper entitlements  
+⏳ Complete end-to-end DMG build  
+⏳ Manual testing on clean macOS system  
+⏳ All features functional without development dependencies

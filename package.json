@@ -2,20 +2,22 @@
   "name": "localrecall",
   "version": "1.0.0",
   "description": "Private local RAG desktop application with Phi-2 and FAISS",
-  "main": "electron/main.js",
+  "main": "index.js",
   "scripts": {
     "electron": "NODE_ENV=development electron .",
     "electron:dev": "concurrently \"npm run frontend:dev\" \"wait-on http://localhost:3000 && npm run electron\"",
     "electron:pack": "electron-builder --dir",
-    "electron:dist": "npm run frontend:build && electron-builder",
+    "electron:dist": "npm run build:production && electron-builder",
     "frontend:dev": "cd app && npm run dev",
     "frontend:build": "cd app && npm run build",
     "frontend:start": "cd app && npm run start",
     "backend:dev": "cd backend && python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
     "backend:install": "cd backend && pip install -r requirements.txt",
+    "backend:build": "./scripts/build-backend.sh",
     "dev": "concurrently \"npm run backend:dev\" \"npm run electron:dev\"",
     "build": "npm run frontend:build && npm run electron:pack",
-    "dist": "npm run frontend:build && npm run electron:dist",
+    "build:production": "npm run frontend:build && npm run backend:build",
+    "dist": "npm run build:production && npm run electron:dist",
     "postinstall": "npm install --prefix app"
   },
   "keywords": [
@@ -50,25 +52,19 @@
       "buildResources": "resources"
     },
     "files": [
+      "index.js",
       "electron/**/*",
       "app/build/**/*",
-      "app/.next/**/*",
-      "backend/**/*",
-      "!backend/tests/**/*",
-      "!backend/**/__pycache__/**/*",
-      "!backend/**/*.pyc",
-      "!backend/.pytest_cache/**/*",
-      "!**/node_modules/**/*"
+      "package.json",
+      "!**/node_modules/**/*",
+      "!backend/**/*"
     ],
     "extraResources": [
       {
-        "from": "backend",
+        "from": "build/backend",
         "to": "backend",
         "filter": [
-          "!tests/**/*",
-          "!**/__pycache__/**/*",
-          "!**/*.pyc",
-          "!.pytest_cache/**/*"
+          "**/*"
         ]
       }
     ],
@@ -82,8 +78,47 @@
         }
       ],
       "darkModeSupport": true,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
       "entitlements": "resources/entitlements.mac.plist",
-      "entitlementsInherit": "resources/entitlements.mac.plist"
+      "entitlementsInherit": "resources/entitlements.mac.plist",
+      "extendInfo": {
+        "CFBundleDocumentTypes": [
+          {
+            "CFBundleTypeName": "PDF Document",
+            "CFBundleTypeExtensions": ["pdf"],
+            "CFBundleTypeIconFile": "icon.icns",
+            "CFBundleTypeRole": "Viewer",
+            "LSHandlerRank": "Alternate"
+          }
+        ],
+        "NSCameraUsageDescription": "LocalRecall needs camera access for document scanning (optional feature).",
+        "NSMicrophoneUsageDescription": "LocalRecall needs microphone access for voice input (optional feature).",
+        "NSAppleEventsUsageDescription": "LocalRecall needs access to control other applications for integration features."
+      }
+    },
+    "dmg": {
+      "title": "LocalRecall Installer",
+      "icon": "resources/icon.icns",
+      "background": "resources/dmg-background.png",
+      "iconSize": 80,
+      "window": {
+        "width": 600,
+        "height": 420
+      },
+      "contents": [
+        {
+          "x": 150,
+          "y": 200,
+          "type": "file"
+        },
+        {
+          "x": 450,
+          "y": 200,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
     },
     "win": {
       "target": [

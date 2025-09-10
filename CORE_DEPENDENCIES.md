@@ -51,3 +51,4 @@
 
   This is excellent for production! Users get a fully functional RAG application without installing Python, managing dependencies, or dealing with complex setup. The
   191MB bundle includes everything except the large AI models, which is the optimal balance between download size and functionality.
+  
