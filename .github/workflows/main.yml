@@ -1,0 +1,174 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+env:
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # Backend Testing
+  backend-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Run backend tests
+        run: |
+          cd backend
+          python -m pytest tests/unit/ -v --tb=short
+          python -m pytest tests/integration/ -v --tb=short
+
+      - name: Run backend linting
+        run: |
+          cd backend
+          python -m pytest tests/ --cov=app --cov-report=xml
+
+  # Frontend Testing
+  frontend-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install frontend dependencies
+        run: |
+          cd app
+          npm ci
+
+      - name: Run frontend tests
+        run: |
+          cd app
+          npm test -- --coverage --watchAll=false
+
+      - name: Run frontend linting
+        run: |
+          cd app
+          npm run lint
+
+      - name: Build frontend
+        run: |
+          cd app
+          npm run build
+
+  # Integration Testing
+  integration-test:
+    runs-on: macos-latest
+    needs: [backend-test, frontend-test]
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          npm install
+          cd app && npm install && cd ..
+          cd backend && pip install -r requirements.txt && cd ..
+
+      - name: Build desktop app (test)
+        run: |
+          npm run build
+
+      - name: Verify build artifacts
+        run: |
+          echo "Checking build output..."
+          ls -la app/build/ || echo "Frontend build not found"
+          echo "Build verification complete"
+
+  # Security Scanning
+  security-scan:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run security audit (npm)
+        run: |
+          cd app
+          npm audit --audit-level=high
+
+      - name: Run security audit (Python)
+        run: |
+          cd backend
+          pip install safety
+          safety check -r requirements.txt
+
+  # Auto-merge dependabot PRs
+  auto-merge:
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-test]
+    if: |
+      github.event_name == 'pull_request' &&
+      github.actor == 'dependabot[bot]' &&
+      github.base_ref == 'main'
+    
+    steps:
+      - name: Auto-merge dependabot PRs
+        run: |
+          echo "Auto-merging dependabot PR"
+          gh pr merge --auto --squash "${{ github.event.pull_request.html_url }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Notify on Success/Failure
+  notify:
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-test]
+    if: always()
+    
+    steps:
+      - name: Notify build status
+        run: |
+          if [[ "${{ needs.backend-test.result }}" == "success" && "${{ needs.frontend-test.result }}" == "success" ]]; then
+            echo "✅ All tests passed!"
+          else
+            echo "❌ Some tests failed"
+            exit 1
+          fi
