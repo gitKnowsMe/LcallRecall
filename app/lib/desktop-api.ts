@@ -279,7 +279,7 @@ class DesktopAPI {
   // Direct LLM streaming without RAG
   createLLMStream(prompt: string, options: { max_tokens?: number; temperature?: number } = {}) {
     const params = new URLSearchParams({ 
-      prompt, 
+      q: prompt,  // Backend expects 'q' parameter, not 'prompt'
       max_tokens: String(options.max_tokens || 1024),
       temperature: String(options.temperature || 0.7)
     });

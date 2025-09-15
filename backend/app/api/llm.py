@@ -75,6 +75,9 @@ async def direct_chat(request: DirectChatRequest):
             processing_time=processing_time
         )
         
+    except HTTPException:
+        # Re-raise HTTPExceptions (like 503 errors) without modification
+        raise
     except Exception as e:
         logger.error(f"Direct chat error: {e}")
         raise HTTPException(status_code=500, detail=f"Chat generation failed: {str(e)}")
@@ -141,7 +144,7 @@ async def _stream_response(message: str, max_tokens: int, temperature: float):
         
         return StreamingResponse(
             generate_stream(),
-            media_type="text/plain",
+            media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
