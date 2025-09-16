@@ -2,7 +2,9 @@
 
 import { MainApp } from "@/components/main-app"
 import { AuthForm } from "@/components/auth/auth-form"
+import { SetupWizard } from "@/components/setup/setup-wizard"
 import { useAuth } from "@/lib/auth-context"
+import { useSetup } from "@/lib/setup-context"
 import { Button } from "@/components/ui/button"
 import { Shield, Database, Upload, MessageSquare, Search } from "lucide-react"
 import { AIChipIcon } from "@/components/ui/ai-chip-icon"
@@ -24,10 +26,11 @@ const SacredGeometryIcon = ({ className }: { className?: string }) => (
 */
 
 export default function HomePage() {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const { needsSetup, setupState, completeSetup, skipSetup } = useSetup()
 
-  // Show loading state while checking authentication
-  if (isLoading) {
+  // Show loading state while checking authentication and setup
+  if (authLoading || setupState.isChecking) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -35,6 +38,23 @@ export default function HomePage() {
           <p className="text-muted-foreground">Loading LocalRecall...</p>
         </div>
       </div>
+    )
+  }
+
+  // Show setup wizard if needed (first-run with no model)
+  if (needsSetup) {
+    return (
+      <SetupWizard 
+        onComplete={(modelPath) => {
+          completeSetup(modelPath).then(() => {
+            // Setup completed, page will re-render to show auth or main app
+            console.log('Setup completed successfully');
+          }).catch((error) => {
+            console.error('Setup completion failed:', error);
+          });
+        }}
+        onSkip={skipSetup}
+      />
     )
   }
 

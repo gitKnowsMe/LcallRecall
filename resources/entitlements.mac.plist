@@ -2,17 +2,55 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <!-- Allow JIT compilation for AI models and JavaScript engines -->
     <key>com.apple.security.cs.allow-jit</key>
     <true/>
+    
+    <!-- Allow unsigned executable memory for AI model loading -->
     <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
     <true/>
+    
+    <!-- Disable library validation for bundled Python/ML libraries -->
     <key>com.apple.security.cs.disable-library-validation</key>
     <true/>
+    
+    <!-- Network access for downloading models and updates -->
     <key>com.apple.security.network.client</key>
     <true/>
+    
+    <!-- Outgoing connections for model downloads -->
     <key>com.apple.security.network.server</key>
     <true/>
+    
+    <!-- File system access for document processing -->
     <key>com.apple.security.files.user-selected.read-write</key>
     <true/>
+    
+    <!-- Access to user's Documents, Downloads, etc. -->
+    <key>com.apple.security.files.downloads.read-write</key>
+    <true/>
+    
+    <!-- Allow app to inherit entitlements -->
+    <key>com.apple.security.inherit</key>
+    <true/>
+    
+    <!-- Print documents -->
+    <key>com.apple.security.print</key>
+    <true/>
+    
+    <!-- Apple Events for system integration -->
+    <key>com.apple.security.automation.apple-events</key>
+    <true/>
+    
+    <!-- Allow dyld environment variables for Python/ML libraries -->
+    <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+    <true/>
+    
+    <!-- Runtime exceptions for AI model execution -->
+    <key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
+    <array>
+        <string>com.apple.SecurityServer</string>
+        <string>com.apple.system.logger</string>
+    </array>
 </dict>
 </plist>

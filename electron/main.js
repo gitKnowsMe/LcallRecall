@@ -3,6 +3,7 @@ const path = require('path');
 const isDev = process.env.NODE_ENV === 'development';
 const { spawn } = require('child_process');
 const os = require('os');
+const ModelManager = require('./model-manager');
 
 // Keep a global reference of the window object
 let mainWindow;
@@ -45,12 +46,32 @@ class BackendManager {
     this.starting = true;
 
     try {
-      const backendPath = path.join(__dirname, '..', 'backend');
-      const pythonCmd = os.platform() === 'win32' ? 'python' : 'python3';
+      let backendExecutable, backendArgs, backendCwd;
       
-      this.process = spawn(pythonCmd, ['-m', 'uvicorn', 'app.main:app', '--host', BACKEND_HOST, '--port', BACKEND_PORT.toString()], {
-        cwd: backendPath,
-        stdio: ['pipe', 'pipe', 'pipe']
+      if (isDev) {
+        // Development mode: Use Python + uvicorn
+        backendCwd = path.join(__dirname, '..', 'backend');
+        const pythonCmd = os.platform() === 'win32' ? 'python' : 'python3';
+        backendExecutable = pythonCmd;
+        backendArgs = ['-m', 'uvicorn', 'app.main:app', '--host', BACKEND_HOST, '--port', BACKEND_PORT.toString()];
+      } else {
+        // Production mode: Use bundled executable
+        backendExecutable = path.join(process.resourcesPath, 'backend', 'localrecall-backend');
+        backendArgs = ['--host', BACKEND_HOST, '--port', BACKEND_PORT.toString()];
+        backendCwd = path.dirname(backendExecutable);
+        
+        // Set user data path for production databases
+        const userDataPath = app.getPath('userData');
+        process.env.LOCALRECALL_USER_DATA = userDataPath;
+        
+        console.log(`Production backend path: ${backendExecutable}`);
+        console.log(`User data path: ${userDataPath}`);
+      }
+      
+      this.process = spawn(backendExecutable, backendArgs, {
+        cwd: backendCwd,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env }
       });
 
       this.process.stdout.on('data', (data) => {
@@ -254,8 +275,119 @@ ipcMain.handle('show-message-box', async (event, options) => {
   return result;
 });
 
+// Model detection and management handlers
+ipcMain.handle('detect-model', async () => {
+  try {
+    const modelPath = await ModelManager.detectModel();
+    
+    if (modelPath) {
+      const modelInfo = await ModelManager.getModelInfo(modelPath);
+      return {
+        found: true,
+        path: modelPath,
+        info: modelInfo
+      };
+    } else {
+      return {
+        found: false,
+        path: null,
+        info: null
+      };
+    }
+  } catch (error) {
+    console.error('Model detection error:', error);
+    return {
+      found: false,
+      path: null,
+      info: null,
+      error: error.message
+    };
+  }
+});
+
+ipcMain.handle('select-model-file', async () => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Select Phi-2 Model File',
+      filters: [
+        { name: 'GGUF Model Files', extensions: ['gguf'] },
+        { name: 'All Files', extensions: ['*'] }
+      ],
+      properties: ['openFile']
+    });
+
+    if (result.canceled || !result.filePaths.length) {
+      return { success: false, canceled: true };
+    }
+
+    const selectedPath = result.filePaths[0];
+    
+    // Validate the selected model
+    const isValid = await ModelManager.validateModel(selectedPath);
+    if (!isValid) {
+      return {
+        success: false,
+        error: 'Selected file does not appear to be a valid Phi-2 model'
+      };
+    }
+
+    const modelInfo = await ModelManager.getModelInfo(selectedPath);
+    return {
+      success: true,
+      path: selectedPath,
+      info: modelInfo
+    };
+  } catch (error) {
+    console.error('File selection error:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+ipcMain.handle('validate-model', async (_event, modelPath) => {
+  try {
+    const isValid = await ModelManager.validateModel(modelPath);
+    const modelInfo = await ModelManager.getModelInfo(modelPath);
+    
+    return {
+      valid: isValid,
+      info: modelInfo
+    };
+  } catch (error) {
+    return {
+      valid: false,
+      error: error.message
+    };
+  }
+});
+
+ipcMain.handle('get-download-instructions', () => {
+  return ModelManager.getDownloadInstructions();
+});
+
+ipcMain.handle('ensure-models-directory', async () => {
+  try {
+    const modelsDir = await ModelManager.ensureModelsDirectory();
+    return {
+      success: true,
+      path: modelsDir
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+ipcMain.handle('open-external', (_event, url) => {
+  shell.openExternal(url);
+});
+
 // Security: Prevent new window creation
-app.on('web-contents-created', (event, contents) => {
+app.on('web-contents-created', (_event, contents) => {
   contents.on('new-window', (event, navigationUrl) => {
     event.preventDefault();
     shell.openExternal(navigationUrl);

@@ -37,6 +37,9 @@ cd backend && python -m pytest tests/integration/ -v
 # Run specific test file
 cd backend && python -m pytest tests/unit/test_model_manager.py -v
 
+# Run with coverage report
+cd backend && python -m pytest tests/ --cov=app --cov-report=html
+
 # Start backend development server
 cd backend && python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
@@ -82,13 +85,20 @@ npm run electron:dev       # Electron + frontend
 
 # Production builds
 npm run frontend:build     # Build Next.js frontend
-npm run build              # Build complete application
-npm run dist               # Create distribution packages
+npm run backend:build      # Bundle backend with PyInstaller
+npm run build:production   # Build frontend + backend for production
+npm run build              # Build complete application (development)
+npm run dist               # Create production DMG distribution
 
 # Electron-specific commands
 npm run electron           # Start electron (requires built frontend)
 npm run electron:pack      # Package without distribution
 npm run electron:dist      # Create platform-specific distributions
+
+# Production deployment scripts
+./scripts/build-production.sh   # Complete production build with verification
+./scripts/build-backend.sh      # Bundle Python backend standalone
+./scripts/test-build.sh         # Verify build artifacts and functionality
 ```
 
 ## Critical Configuration
@@ -100,12 +110,13 @@ The application requires the Phi-2 GGUF model at:
 Update `backend/app/services/llm_service.py` if model path changes.
 
 ### Database Architecture
-- **Authentication DB**: `backend/data/auth.db` - Encrypted user credentials
+- **Authentication DB**: `backend/data/auth.db` - Username-based user credentials (no email required)
 - **Metadata DB**: `backend/data/global_metadata.db` - Document metadata
 - **Workspace Indices**: `backend/data/workspaces/` - Per-workspace FAISS vector stores
 
 ### Security Architecture
-- JWT token-based authentication with bcrypt password hashing
+- Username-only authentication system with JWT tokens and bcrypt password hashing
+- No email requirement - simplified registration for local desktop application
 - Workspace isolation prevents cross-user data access
 - Context isolation in Electron with secure IPC bridge
 - Local-only operation (no external API calls)
@@ -118,7 +129,7 @@ Update `backend/app/services/llm_service.py` if model path changes.
 - `DatabaseManager`: SQLite database connection management (app/core/database_manager.py)
 - `ModelManager`: Singleton Phi-2 model loading and text generation (saves 2-4GB RAM)
 - `VectorStoreManager`: Workspace-based FAISS indices with embedding generation
-- `AuthService`: JWT authentication with workspace management
+- `AuthService`: Username-based JWT authentication with workspace management (no email)
 - `DocumentProcessor`: PDF processing with semantic chunking via spaCy (app/services/document_processor.py)
 - `QueryService`: RAG pipeline with vector search and LLM generation (app/services/query_service.py)
 - `StreamingService`: Real-time response streaming (app/services/streaming_service.py)
@@ -142,7 +153,7 @@ Update `backend/app/services/llm_service.py` if model path changes.
 - Secure IPC bridge in `electron/preload.js`
 
 **Frontend ↔ Backend API:**
-- Authentication: `/api/auth/*` endpoints
+- Authentication: `/api/auth/*` endpoints (username-based, no email required)
 - Documents: `/api/documents/*` with file upload
 - RAG Query: `/api/query/*` with streaming support via SSE
 - **Direct LLM**: `/api/llm/*` with streaming support via SSE (no RAG)
@@ -307,20 +318,21 @@ LocalRecall includes a separate direct LLM chat interface alongside the RAG-base
 ## Development Dependencies
 
 ### Python Backend Stack
-- **Framework**: FastAPI 0.104.1 + Uvicorn for ASGI server
-- **AI/ML**: llama-cpp-python 2.19, sentence-transformers 2.7.0, torch 2.1.0
+- **Framework**: FastAPI 0.104.1 + Uvicorn 0.24.0 for ASGI server
+- **AI/ML**: llama-cpp-python 0.2.19, sentence-transformers 2.7.0, torch 2.1.0
 - **Vector DB**: faiss-cpu 1.7.4 for semantic search
 - **Document Processing**: PyMuPDF 1.23.8, spaCy 3.7.2 for semantic chunking
 - **Database**: SQLAlchemy 2.0.23 + aiosqlite for async SQLite operations
-- **Auth**: bcrypt 4.1.2, python-jose for JWT tokens
-- **Testing**: pytest 7.4.3, pytest-asyncio 0.21.1, pytest-mock 3.12.0
+- **Auth**: bcrypt 4.1.2, python-jose[cryptography] 3.3.0 for JWT tokens
+- **Testing**: pytest 7.4.3, pytest-asyncio 0.21.1, pytest-mock 3.12.0, httpx 0.25.2
 
 ### Frontend Stack  
 - **Framework**: Next.js 14.2.16 with App Router and React 18
 - **UI**: Tailwind CSS v4, Radix UI primitives, shadcn/ui components
 - **Forms**: react-hook-form 7.60.0 + zod 3.25.67 validation
-- **Testing**: Jest 30.1.3, @testing-library/react 16.3.0
+- **Testing**: Jest 30.1.3, @testing-library/react 16.3.0, @testing-library/jest-dom 6.8.0
 - **Icons**: lucide-react 0.454.0 for UI icons
+- **Utilities**: class-variance-authority 0.7.1, clsx 2.1.1, tailwind-merge 2.5.5
 
 ### Desktop Stack
 - **Runtime**: Electron 27.0.0 for cross-platform desktop
@@ -338,7 +350,7 @@ LocalRecall includes a separate direct LLM chat interface alongside the RAG-base
 ### Frontend Entry Points  
 - `app/app/layout.tsx`: Root layout with theme provider and global styles
 - `app/components/main-app.tsx`: Main application component with auth routing
-- `app/components/auth/auth-form.tsx`: Combined login/register authentication
+- `app/components/auth/auth-form.tsx`: Username-only login/register authentication
 - `app/components/query/query-interface.tsx`: RAG chat interface with streaming
 - `app/components/llm/llm-chat.tsx`: Direct LLM chat interface (no RAG)
 
@@ -367,3 +379,92 @@ LocalRecall includes a separate direct LLM chat interface alongside the RAG-base
 - Radix UI primitives for accessible components
 - Custom icons: AI chip branding, sacred geometry elements
 - Dark mode support via next-themes provider
+
+## Production Deployment
+
+LocalRecall includes a comprehensive production deployment system that transforms the development setup into a professional macOS application users can download and install immediately.
+
+### Production Build Architecture
+
+**Target User Experience:**
+- Download LocalRecall.dmg (150-200MB)
+- Drag to Applications folder
+- Launch → Professional setup wizard appears
+- Auto-detect or guide Phi-2 model installation
+- Create username-only account
+- Ready to use - no dependencies required
+
+### Build Process (3 Phases Complete)
+
+**Phase 1: Backend Bundling** ✅
+- PyInstaller creates 191MB standalone executable with all Python dependencies
+- Includes PyTorch, FAISS, FastAPI, llama-cpp-python, sentence-transformers
+- Self-contained backend eliminates Python installation requirement
+- Production paths use macOS user data directory
+
+**Phase 2: Model Detection & Setup Wizard** ✅
+- Intelligent Phi-2 model auto-detection in common locations
+- Professional 3-step setup wizard (welcome, model setup, completion)
+- Electron IPC integration for native file dialogs and model validation
+- Setup state management with localStorage persistence
+- Download instructions and model validation
+
+**Phase 3: Electron Build Configuration** ✅
+- Comprehensive package.json build configuration for DMG distribution
+- macOS entitlements for ML libraries, JIT compilation, file system access
+- DMG installer configuration with custom background and drag-to-Applications
+- Cross-architecture support (Intel x64 + Apple Silicon ARM64)
+- Production build scripts with verification and testing
+
+### Key Production Files
+
+**Build Scripts:**
+- `scripts/build-production.sh`: Complete production build orchestration
+- `scripts/build-backend.sh`: PyInstaller bundling with dependency detection
+- `scripts/test-build.sh`: Build verification and artifact testing
+
+**Configuration:**
+- `resources/entitlements.mac.plist`: macOS security entitlements for AI models
+- `package.json` build section: Electron builder configuration
+- `electron/model-manager.js`: Phi-2 auto-detection service
+
+**Setup Wizard:**
+- `app/components/setup/setup-wizard.tsx`: Main wizard component
+- `app/lib/setup-context.tsx`: First-run state management
+- `app/components/setup/*`: Individual wizard steps
+
+### Production Commands
+
+```bash
+# Complete production build
+npm run dist                    # Build frontend + backend + DMG
+./scripts/build-production.sh   # Full build with verification
+
+# Individual build steps
+npm run build:production        # Frontend + backend only
+npm run backend:build          # Bundle Python backend standalone
+npm run frontend:build         # Build React frontend
+
+# Testing and verification
+./scripts/test-build.sh        # Verify build artifacts
+npm run electron:pack          # Test packaging without DMG
+```
+
+### Deployment Status
+
+- **Phase 1-3**: Complete (Backend bundling, Setup wizard, Build configuration)
+- **Phase 4-5**: In progress (Complete build process, User experience testing)
+- **Distribution**: Ready for DMG creation and testing
+- **Code Signing**: Configured but requires Apple Developer certificates
+
+### Build Verification Checklist
+
+✅ Frontend compiles to static files  
+✅ Backend bundles to 191MB standalone executable  
+✅ Model detection finds existing Phi-2 models  
+✅ Setup wizard renders with proper styling  
+✅ Electron configuration includes all necessary files  
+✅ DMG configuration with proper entitlements  
+⏳ Complete end-to-end DMG build  
+⏳ Manual testing on clean macOS system  
+⏳ All features functional without development dependencies

@@ -1,0 +1,171 @@
+name: Build and Release LocalRecall
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.1)'
+        required: true
+        default: '1.0.1'
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+
+jobs:
+  build-and-release:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          npm install
+          cd app && npm install && cd ..
+          cd backend && pip install -r requirements.txt && cd ..
+
+      - name: Update version (if manual trigger)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          npm version ${{ github.event.inputs.version }} --no-git-tag-version
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add package.json
+          git commit -m "chore: bump version to ${{ github.event.inputs.version }}"
+          git tag v${{ github.event.inputs.version }}
+          git push origin HEAD --tags
+
+      - name: Build production DMG
+        run: |
+          echo "🚀 Building LocalRecall for production release..."
+          npm run dist
+
+      - name: Verify build artifacts
+        run: |
+          echo "📦 Checking build artifacts..."
+          ls -la dist/
+          
+          # Find and verify DMG file
+          DMG_FILE=$(find dist/ -name "*.dmg" | head -1)
+          if [[ -n "$DMG_FILE" ]]; then
+            echo "✅ DMG found: $DMG_FILE"
+            echo "📊 DMG size: $(du -h "$DMG_FILE" | cut -f1)"
+          else
+            echo "❌ No DMG file found!"
+            exit 1
+          fi
+
+      - name: Extract version from package.json
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=v$VERSION" >> $GITHUB_OUTPUT
+          echo "version_number=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: "LocalRecall ${{ steps.version.outputs.version }}"
+          draft: false
+          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
+          generate_release_notes: true
+          files: |
+            dist/*.dmg
+            dist/*.dmg.blockmap
+            dist/latest-mac.yml
+          body: |
+            ## LocalRecall ${{ steps.version.outputs.version }}
+            
+            🎉 **Professional desktop RAG application with local AI**
+            
+            ### 📥 Installation
+            1. Download `LocalRecall-${{ steps.version.outputs.version_number }}-arm64.dmg`
+            2. Open the DMG and drag LocalRecall to Applications
+            3. Launch LocalRecall and follow the setup wizard
+            
+            ### ✨ What's New
+            ${{ github.event.head_commit.message }}
+            
+            ### 🔧 Requirements
+            - macOS 11.0+ (Big Sur or later)
+            - Apple Silicon Mac (M1/M2/M3)
+            - 2GB+ available storage
+            - Phi-2 GGUF model (auto-detected or guided setup)
+            
+            ### 🚀 Features
+            - **Private & Local**: No data leaves your device
+            - **AI-Powered**: Chat with your documents using Phi-2
+            - **Smart Processing**: Advanced PDF document understanding
+            - **Fast Search**: Vector-based semantic search
+            - **Easy Setup**: Professional setup wizard
+            
+            ---
+            
+            **Download Analytics**: This release includes download tracking for product improvements.
+            **Auto-Updates**: Built-in update system keeps you current with latest features.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger Vercel Deployment
+        run: |
+          if [ -n "${{ secrets.VERCEL_DEPLOY_HOOK }}" ]; then
+            echo "🌐 Triggering Vercel deployment..."
+            curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "trigger": "github_release",
+                "version": "${{ steps.version.outputs.version }}",
+                "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
+              }'
+            echo "✅ Vercel deployment triggered"
+          else
+            echo "⚠️ Vercel deploy hook not configured"
+          fi
+
+      - name: Send Release Notification
+        run: |
+          if [ -n "${{ secrets.DISCORD_WEBHOOK_URL }}" ]; then
+            echo "📢 Sending release notification..."
+            curl -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "content": "🚀 **LocalRecall ${{ steps.version.outputs.version }} Released!**\n\n📱 **Professional desktop RAG application**\n🔗 Download: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }}\n✅ Stable release"
+              }'
+            echo "✅ Release notification sent"
+          else
+            echo "⚠️ Discord webhook not configured"
+          fi
+
+      - name: Release Summary
+        run: |
+          echo "🎉 Release Summary"
+          echo "================="
+          echo "📱 Version: ${{ steps.version.outputs.version }}"
+          echo "📦 Artifacts: $(ls dist/*.dmg dist/*.dmg.blockmap dist/latest-mac.yml 2>/dev/null | wc -l) files"
+          echo "🔗 Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }}"
+          echo ""
+          echo "✅ LocalRecall release complete!"

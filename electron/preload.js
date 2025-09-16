@@ -27,7 +27,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Window controls
   closeWindow: () => ipcRenderer.invoke('window-close'),
   minimizeWindow: () => ipcRenderer.invoke('window-minimize'),
-  maximizeWindow: () => ipcRenderer.invoke('window-maximize')
+  maximizeWindow: () => ipcRenderer.invoke('window-maximize'),
+  
+  // Model detection and management
+  detectModel: () => ipcRenderer.invoke('detect-model'),
+  selectModelFile: () => ipcRenderer.invoke('select-model-file'),
+  validateModel: (modelPath) => ipcRenderer.invoke('validate-model', modelPath),
+  getDownloadInstructions: () => ipcRenderer.invoke('get-download-instructions'),
+  ensureModelsDirectory: () => ipcRenderer.invoke('ensure-models-directory'),
+  openExternal: (url) => ipcRenderer.invoke('open-external', url)
 });
 
 // Set up secure communication channel

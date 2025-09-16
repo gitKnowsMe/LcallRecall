@@ -2,20 +2,27 @@
   "name": "localrecall",
   "version": "1.0.0",
   "description": "Private local RAG desktop application with Phi-2 and FAISS",
-  "main": "electron/main.js",
+  "main": "index.js",
   "scripts": {
     "electron": "NODE_ENV=development electron .",
     "electron:dev": "concurrently \"npm run frontend:dev\" \"wait-on http://localhost:3000 && npm run electron\"",
     "electron:pack": "electron-builder --dir",
-    "electron:dist": "npm run frontend:build && electron-builder",
+    "electron:dist": "npm run build:production && electron-builder",
     "frontend:dev": "cd app && npm run dev",
     "frontend:build": "cd app && npm run build",
     "frontend:start": "cd app && npm run start",
     "backend:dev": "cd backend && python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
     "backend:install": "cd backend && pip install -r requirements.txt",
+    "backend:build": "./scripts/build-backend.sh",
     "dev": "concurrently \"npm run backend:dev\" \"npm run electron:dev\"",
     "build": "npm run frontend:build && npm run electron:pack",
-    "dist": "npm run frontend:build && npm run electron:dist",
+    "build:production": "npm run frontend:build && npm run backend:build",
+    "dist": "npm run build:production && npm run electron:dist",
+    "release": "npm version patch && git push && git push --tags",
+    "release:minor": "npm version minor && git push && git push --tags", 
+    "release:major": "npm version major && git push && git push --tags",
+    "release:manual": "gh workflow run release.yml",
+    "publish:github": "gh release create v$npm_package_version dist/*.dmg --generate-notes",
     "postinstall": "npm install --prefix app"
   },
   "keywords": [
@@ -45,30 +52,28 @@
     "appId": "com.localrecall.app",
     "productName": "LocalRecall",
     "copyright": "Copyright © 2025 LocalRecall Team",
+    "asar": false,
     "directories": {
       "output": "dist",
-      "buildResources": "resources"
+      "buildResources": "resources",
+      "app": "."
     },
     "files": [
+      "index.js",
       "electron/**/*",
       "app/build/**/*",
-      "app/.next/**/*",
-      "backend/**/*",
-      "!backend/tests/**/*",
-      "!backend/**/__pycache__/**/*",
-      "!backend/**/*.pyc",
-      "!backend/.pytest_cache/**/*",
-      "!**/node_modules/**/*"
+      "package.json",
+      "!**/node_modules/**/*",
+      "!backend/**/*",
+      "!app/package.json",
+      "!app/node_modules/**/*"
     ],
     "extraResources": [
       {
-        "from": "backend",
+        "from": "build/backend",
         "to": "backend",
         "filter": [
-          "!tests/**/*",
-          "!**/__pycache__/**/*",
-          "!**/*.pyc",
-          "!.pytest_cache/**/*"
+          "**/*"
         ]
       }
     ],
@@ -78,12 +83,51 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": ["arm64"]
         }
       ],
       "darkModeSupport": true,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
       "entitlements": "resources/entitlements.mac.plist",
-      "entitlementsInherit": "resources/entitlements.mac.plist"
+      "entitlementsInherit": "resources/entitlements.mac.plist",
+      "extendInfo": {
+        "CFBundleDocumentTypes": [
+          {
+            "CFBundleTypeName": "PDF Document",
+            "CFBundleTypeExtensions": ["pdf"],
+            "CFBundleTypeIconFile": "icon.icns",
+            "CFBundleTypeRole": "Viewer",
+            "LSHandlerRank": "Alternate"
+          }
+        ],
+        "NSCameraUsageDescription": "LocalRecall needs camera access for document scanning (optional feature).",
+        "NSMicrophoneUsageDescription": "LocalRecall needs microphone access for voice input (optional feature).",
+        "NSAppleEventsUsageDescription": "LocalRecall needs access to control other applications for integration features."
+      }
+    },
+    "dmg": {
+      "title": "LocalRecall Installer",
+      "icon": "resources/icon.icns",
+      "background": "resources/dmg-background.png",
+      "iconSize": 80,
+      "window": {
+        "width": 600,
+        "height": 420
+      },
+      "contents": [
+        {
+          "x": 150,
+          "y": 200,
+          "type": "file"
+        },
+        {
+          "x": 450,
+          "y": 200,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
     },
     "win": {
       "target": [

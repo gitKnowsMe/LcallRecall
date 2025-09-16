@@ -80,12 +80,21 @@ This will:
 ### 4. Production Build
 
 ```bash
-# Build for production
-npm run build
+# Build frontend and backend for production
+npm run build:production
 
-# Create distribution packages
+# Create distribution packages (DMG for macOS)
 npm run dist
 ```
+
+The production build creates:
+- **LocalRecall-1.0.0.dmg** - Intel x64 version
+- **LocalRecall-1.0.0-arm64.dmg** - Apple Silicon ARM64 version
+
+Each DMG contains a complete, self-contained application with:
+- Bundled Python backend (191MB executable with all ML dependencies)
+- Optimized Next.js frontend
+- Desktop application wrapper
 
 ## Project Structure
 
@@ -120,10 +129,12 @@ npm run backend:dev         # Backend only
 npm run electron:dev        # Electron + frontend
 
 # Building
-npm run build              # Build for production
-npm run frontend:build     # Build frontend
+npm run build:production   # Build frontend and backend for production
+npm run frontend:build     # Build frontend only
+npm run backend:build      # Build backend executable
 npm run electron:pack      # Package Electron app
 npm run electron:dist      # Create distribution
+npm run dist              # Complete build pipeline + distribution
 
 # Testing
 cd backend && python -m pytest  # Run backend tests
@@ -162,6 +173,23 @@ LocalRecall integrates three main components:
 - **Singleton Loading**: Phi-2 model loaded once at startup
 - **Memory Optimization**: Efficient memory usage for large models
 - **Streaming Support**: Real-time response generation
+
+### Production Deployment
+
+LocalRecall uses a hybrid deployment architecture:
+
+- **Development Mode**: Separate Python/Node.js processes for hot reloading
+- **Production Mode**: Self-contained executable with bundled dependencies
+  - **Backend**: PyInstaller-bundled Python executable (191MB)
+  - **Frontend**: Optimized Next.js static build
+  - **Package**: Electron app bundle with all resources
+  - **Distribution**: Platform-specific DMG installers
+
+**Build Pipeline**:
+1. Frontend compilation (Next.js → static files)
+2. Backend bundling (Python + ML dependencies → executable)
+3. Electron packaging (combine all components)
+4. DMG creation (macOS installer with code signing)
 
 ## Configuration
 

@@ -47,9 +47,17 @@ pids
 # Coverage directory used by tools like istanbul
 coverage/
 
-# Electron
+# Build artifacts
+build/
 dist/
 out/
+
+# PyInstaller artifacts
+*.spec
+*.toc
+*.pyz
+backend/build/
+backend/dist/
 
 # Environment variables
 .env
