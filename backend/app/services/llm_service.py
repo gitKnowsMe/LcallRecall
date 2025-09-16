@@ -25,71 +25,49 @@ class ModelManager:
         if self._model is not None:
             logger.info("Model already loaded")
             return True
-            
-        try:
-            if not os.path.exists(self._model_path):
-                logger.warning(f"Model not found at {self._model_path}")
-                logger.info("Using mock mode for development")
-                self._model = "mock"  # Use mock mode
-                return True
-            
-            logger.info(f"Loading Phi-2 model from {self._model_path}")
-            
-            # Initialize thread pool for blocking operations
-            self._executor = ThreadPoolExecutor(max_workers=1)
-            
-            try:
-                # Load model in thread pool to avoid blocking
-                loop = asyncio.get_event_loop()
-                self._model = await loop.run_in_executor(
-                    self._executor,
-                    self._load_model
-                )
-                logger.info("✅ Phi-2 model loaded successfully")
-                return True
-            except Exception as model_error:
-                logger.warning(f"Failed to load model: {model_error}")
-                logger.info("Falling back to mock mode for development")
-                self._model = "mock"  # Use mock mode as fallback
-                return True
-            
-        except Exception as e:
-            logger.error(f"Failed to initialize model service: {e}")
-            logger.info("Using mock mode for development")
-            self._model = "mock"  # Use mock mode
-            return True
+
+        if not os.path.exists(self._model_path):
+            raise RuntimeError(f"Model not found at {self._model_path}")
+
+        logger.info(f"Loading Phi-2 model from {self._model_path}")
+
+        # Initialize thread pool for blocking operations
+        self._executor = ThreadPoolExecutor(max_workers=1)
+
+        # Load model in thread pool to avoid blocking
+        loop = asyncio.get_event_loop()
+        self._model = await loop.run_in_executor(
+            self._executor,
+            self._load_model
+        )
+        logger.info("✅ Phi-2 model loaded successfully")
+        return True
     
     def _load_model(self) -> Llama:
         """Load the model (runs in thread pool)"""
-        return Llama(
-            model_path=self._model_path,
-            n_ctx=2048,  # Smaller context window to reduce memory usage
-            n_batch=256,  # Smaller batch size
-            n_threads=2,  # Fewer threads
-            verbose=False,
-            seed=42,  # Reproducible outputs
-            use_mlock=False,  # Don't lock memory
-            use_mmap=True,  # Use memory mapping
-            n_gpu_layers=0  # Force CPU only
-        )
+        try:
+            return Llama(
+                model_path=self._model_path,
+                n_ctx=2048,     # More conservative context window
+                n_batch=256,    # More conservative batch size
+                n_threads=2,    # Fewer threads to reduce resource contention
+                verbose=True,   # Enable verbose to see detailed error messages
+                seed=42,
+                use_mlock=False,  # Don't lock memory
+                use_mmap=True     # Use memory mapping for efficiency
+            )
+        except Exception as e:
+            logger.error(f"Detailed model loading error: {e}")
+            raise e
     
     def is_loaded(self) -> bool:
         """Check if model is loaded"""
         return self._model is not None
     
-    def _is_mock_mode(self) -> bool:
-        """Check if running in mock mode"""
-        return self._model == "mock"
-    
     async def generate(self, prompt: str, max_tokens: int = 1024, temperature: float = 0.7) -> str:
         """Generate response (non-streaming)"""
         if not self.is_loaded():
             raise RuntimeError("Model not loaded")
-        
-        # Mock mode for development
-        if self._is_mock_mode():
-            await asyncio.sleep(0.5)  # Simulate processing time
-            return f"Mock response to: {prompt[:50]}... This is a simulated AI response for development purposes."
         
         try:
             loop = asyncio.get_event_loop()
@@ -111,15 +89,6 @@ class ModelManager:
         """Generate streaming response"""
         if not self.is_loaded():
             raise RuntimeError("Model not loaded")
-        
-        # Mock mode for development  
-        if self._is_mock_mode():
-            mock_response = f"Mock streaming response to: {prompt[:50]}... This is a simulated AI response for development purposes with streaming simulation."
-            words = mock_response.split()
-            for word in words:
-                await asyncio.sleep(0.1)  # Simulate streaming delay
-                yield word + " "
-            return
         
         try:
             # Create a queue for streaming tokens
