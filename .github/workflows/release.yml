@@ -130,20 +130,30 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Trigger Vercel Deployment
+      - name: Trigger Website Deployment
         run: |
-          if [ -n "${{ secrets.VERCEL_DEPLOY_HOOK }}" ]; then
-            echo "🌐 Triggering Vercel deployment..."
-            curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}" \
+          if [ -n "${{ secrets.VERCEL_DEPLOY_HOOK_WEBSITE }}" ]; then
+            echo "🌐 Triggering local-recall-front-web deployment..."
+
+            # Find the DMG download URL
+            DMG_FILE=$(find dist/ -name "*.dmg" | head -1)
+            DMG_NAME=$(basename "$DMG_FILE" 2>/dev/null || echo "LocalRecall.dmg")
+            DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/${DMG_NAME}"
+
+            curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK_WEBSITE }}" \
               -H "Content-Type: application/json" \
               -d '{
-                "trigger": "github_release",
+                "trigger": "localrecall_release",
                 "version": "${{ steps.version.outputs.version }}",
+                "download_url": "'${DOWNLOAD_URL}'",
+                "release_url": "https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }}",
                 "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
               }'
-            echo "✅ Vercel deployment triggered"
+            echo "✅ Website deployment triggered for version ${{ steps.version.outputs.version }}"
+            echo "📥 Download URL: ${DOWNLOAD_URL}"
           else
-            echo "⚠️ Vercel deploy hook not configured"
+            echo "⚠️ Website deploy hook not configured"
+            echo "💡 Add VERCEL_DEPLOY_HOOK_WEBSITE secret to enable automatic website updates"
           fi
 
       - name: Send Release Notification
