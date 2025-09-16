@@ -59,6 +59,10 @@ out/
 backend/build/
 backend/dist/
 
+# Large executable files
+localrecall-backend
+**/localrecall-backend
+
 # Environment variables
 .env
 .env.local
