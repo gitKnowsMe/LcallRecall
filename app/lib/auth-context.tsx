@@ -36,7 +36,7 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false) // Start with false to prevent hanging
   const [error, setError] = useState<string | null>(null)
 
   const isAuthenticated = !!user
@@ -49,11 +49,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const checkAuthStatus = async () => {
     try {
       setIsLoading(true)
-      const userData = await desktopAPI.getCurrentUser()
-      setUser(userData)
+
+      // Simple approach: try to get current user, don't block UI
+      try {
+        const userData = await desktopAPI.getCurrentUser()
+        setUser(userData)
+      } catch (error) {
+        setUser(null)
+      }
     } catch (error) {
-      // User not authenticated or token expired
-      console.log('User not authenticated:', error)
       setUser(null)
     } finally {
       setIsLoading(false)
@@ -90,16 +94,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setIsLoading(true)
       setError(null)
-      
+
       const response = await desktopAPI.register(username, password)
-      
-      if (response.access_token && response.username) {
-        // Create user object from response data
-        setUser({
-          id: response.user_id.toString(),
-          username: response.username,
-          workspaceId: response.workspace_id
-        })
+
+      // Registration only creates the user, doesn't automatically log them in
+      if (response.user_id && response.username) {
+        // Registration successful - user needs to login separately
+        // Don't set user state - user needs to login
       } else {
         throw new Error('Invalid response from registration')
       }

@@ -2,7 +2,7 @@ import os
 import logging
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 
 from ..models.user import User, Base as UserBase
 from ..models.document import Document, DocumentChunk, Base as DocumentBase

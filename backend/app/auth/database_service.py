@@ -19,12 +19,16 @@ class DatabaseService:
     
     def initialize(self):
         """Initialize database service with database manager"""
+        logger.info("DatabaseService.initialize() called")
         self.database_manager = get_database_manager()
+        logger.info(f"get_database_manager() returned: {self.database_manager}")
+        logger.info(f"Database manager type: {type(self.database_manager)}")
         if self.database_manager:
             self._initialized = True
             logger.info("DatabaseService initialized with DatabaseManager")
         else:
-            logger.warning("DatabaseService initialized without DatabaseManager - using fallback")
+            logger.error("DatabaseService failed to get DatabaseManager")
+            logger.error("Database manager is not initialized - this will cause auth failures")
     
     @contextmanager
     def get_auth_db_connection(self):
@@ -38,9 +42,10 @@ class DatabaseService:
                 yield conn
             except Exception as e:
                 logger.error(f"Failed to get auth database connection: {e}")
-                raise RuntimeError("Auth database not initialized")
+                raise RuntimeError(f"Auth database connection failed: {str(e)}")
         else:
-            raise RuntimeError("Auth database not initialized")
+            logger.error(f"Cannot get auth database connection - initialized: {self._initialized}, has_manager: {self.database_manager is not None}")
+            raise RuntimeError("Auth database not initialized - database manager is missing")
     
     def execute_query(self, query: str, params: tuple = ()) -> Optional[Dict[str, Any]]:
         """Execute a single query and return one result"""

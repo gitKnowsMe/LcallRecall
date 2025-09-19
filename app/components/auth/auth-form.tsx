@@ -55,6 +55,11 @@ export function AuthForm() {
 
     try {
       await register(registerForm.username, registerForm.password)
+      // Registration successful - switch to login tab and pre-fill username
+      setLoginForm({ username: registerForm.username, password: '' })
+      setRegisterForm({ username: '', password: '', confirmPassword: '' })
+      setActiveTab('login')
+      // Note: Could add success toast/message here
     } catch (error) {
       // Error is handled by the context
     }

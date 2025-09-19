@@ -80,14 +80,14 @@ class AuthService:
             raise
         except Exception as e:
             logger.error(f"Registration failed for {username}: {e}")
-            raise AuthError(f"Auth database not initialized")
+            raise AuthError(f"Registration failed: {str(e)}")
     
     async def authenticate_user(self, username: str, password: str) -> Dict[str, Any]:
         """
         Authenticate user with username/password
         
         Args:
-            username: Username or email
+            username: Username
             password: Plain text password
             
         Returns:
@@ -240,30 +240,28 @@ class AuthService:
     async def deactivate_user(self, user_id: int) -> bool:
         """
         Deactivate user account
-        
+
         Args:
             user_id: User ID to deactivate
-            
+
         Returns:
             True if successful, False otherwise
         """
         try:
-            db = next(get_auth_db())
-            user = db.query(User).filter(User.id == user_id).first()
-            
-            if user:
-                user.is_active = False
-                db.commit()
+            rows_affected = database_service.execute_update(
+                "UPDATE users SET is_active = ? WHERE id = ?",
+                (False, user_id)
+            )
+
+            if rows_affected > 0:
                 logger.info(f"User {user_id} deactivated")
                 return True
-            
+
             return False
-            
+
         except Exception as e:
             logger.error(f"Failed to deactivate user {user_id}: {e}")
             return False
-        finally:
-            db.close()
 
 # Global service instance
 auth_service = AuthService()

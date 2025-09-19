@@ -37,12 +37,14 @@ export function SetupProvider({ children }: SetupProviderProps) {
     hasModel: false,
     modelPath: null,
     isFirstRun: false,
-    isChecking: true,
+    isChecking: false, // Start with false to prevent hanging
   });
 
   const checkSetupStatus = async () => {
     try {
-      setSetupState(prev => ({ ...prev, isChecking: true }));
+
+      // Always resolve quickly to show UI immediately
+      setSetupState(prev => ({ ...prev, isChecking: false }));
 
       // Check if we're in desktop app (has model detection capability)
       if (!desktopAPI.isDesktopApp()) {
@@ -57,29 +59,22 @@ export function SetupProvider({ children }: SetupProviderProps) {
 
       // Check if setup has been completed before
       const hasCompletedSetup = localStorage.getItem('localrecall_setup_completed');
-      
-      // Detect model automatically
-      const modelDetection = await desktopAPI.detectModel();
-      
+      const savedModelPath = localStorage.getItem('localrecall_model_path');
+
+
+      // Set state immediately - no hanging
       const newSetupState: SetupState = {
-        hasModel: modelDetection.found,
-        modelPath: modelDetection.path,
-        isFirstRun: !hasCompletedSetup && !modelDetection.found,
+        hasModel: !!hasCompletedSetup && !!savedModelPath,
+        modelPath: savedModelPath,
+        isFirstRun: !hasCompletedSetup,
         isChecking: false,
       };
 
       setSetupState(newSetupState);
 
-      // If model is found but setup not marked complete, mark it complete
-      if (modelDetection.found && !hasCompletedSetup) {
-        localStorage.setItem('localrecall_setup_completed', 'true');
-        localStorage.setItem('localrecall_model_path', modelDetection.path);
-      }
-
-      console.log('Setup status check completed:', newSetupState);
     } catch (error) {
       console.error('Setup status check failed:', error);
-      
+
       // On error, assume first run if no setup flag exists
       const hasCompletedSetup = localStorage.getItem('localrecall_setup_completed');
       setSetupState(prev => ({
@@ -114,7 +109,7 @@ export function SetupProvider({ children }: SetupProviderProps) {
         isFirstRun: false,
       }));
 
-      console.log('Setup completed successfully:', modelPath);
+      // Setup completed successfully
     } catch (error) {
       console.error('Setup completion failed:', error);
       throw error;
@@ -130,7 +125,7 @@ export function SetupProvider({ children }: SetupProviderProps) {
       isFirstRun: false,
     }));
 
-    console.log('Setup skipped by user');
+    // Setup skipped by user
   };
 
   // Check setup status on mount

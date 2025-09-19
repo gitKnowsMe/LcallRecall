@@ -8,10 +8,15 @@ const ModelManager = require('./model-manager');
 // Keep a global reference of the window object
 let mainWindow;
 let backendProcess = null;
+let frontendProcess = null;
 
 // Backend configuration
 const BACKEND_PORT = 8000;
 const BACKEND_HOST = '127.0.0.1';
+
+// Frontend configuration
+const FRONTEND_PORT = 3001;
+const FRONTEND_HOST = '127.0.0.1';
 
 class BackendManager {
   constructor() {
@@ -63,8 +68,13 @@ class BackendManager {
         // Set user data path for production databases
         const userDataPath = app.getPath('userData');
         process.env.LOCALRECALL_USER_DATA = userDataPath;
-        
+
+        // Set production config file path
+        const configPath = path.join(path.dirname(backendExecutable), 'production-config.json');
+        process.env.CONFIG_FILE = configPath;
+
         console.log(`Production backend path: ${backendExecutable}`);
+        console.log(`Production config path: ${configPath}`);
         console.log(`User data path: ${userDataPath}`);
       }
       
@@ -76,45 +86,65 @@ class BackendManager {
 
       this.process.stdout.on('data', (data) => {
         const output = data.toString();
-        console.log(`Backend: ${output}`);
-        
-        // Check if backend is ready
-        if (output.includes('Uvicorn running') || output.includes('Application startup complete')) {
-          this.ready = true;
-          this.starting = false;
-          
-          // Notify renderer that backend is ready
-          if (mainWindow) {
-            mainWindow.webContents.send('backend-status', { status: 'ready', port: BACKEND_PORT });
+        try {
+          console.log(`Backend: ${output}`);
+        } catch (e) {
+          // Ignore EPIPE errors when writing to closed streams
+        }
+      });
+
+      // Start periodic health check instead of relying on stdout parsing
+      this.startHealthCheck();
+
+      this.process.stderr.on('data', (data) => {
+        try {
+          console.error(`Backend Error: ${data}`);
+        } catch (e) {
+          // Ignore EPIPE errors when writing to closed streams
+        }
+      });
+
+      this.process.on('close', (code) => {
+        try {
+          console.log(`Backend process exited with code ${code}`);
+        } catch (e) {
+          // Ignore EPIPE errors when writing to closed streams
+        }
+        this.ready = false;
+        this.starting = false;
+
+        if (mainWindow) {
+          try {
+            mainWindow.webContents.send('backend-status', { status: 'stopped' });
+          } catch (e) {
+            // Window might be closed
           }
         }
       });
 
-      this.process.stderr.on('data', (data) => {
-        console.error(`Backend Error: ${data}`);
-      });
-
-      this.process.on('close', (code) => {
-        console.log(`Backend process exited with code ${code}`);
-        this.ready = false;
-        this.starting = false;
-        
-        if (mainWindow) {
-          mainWindow.webContents.send('backend-status', { status: 'stopped' });
-        }
-      });
-
       this.process.on('error', (error) => {
-        console.error('Failed to start backend:', error);
+        try {
+          console.error('Failed to start backend:', error);
+        } catch (e) {
+          // Ignore EPIPE errors when writing to closed streams
+        }
         this.starting = false;
-        
+
         if (mainWindow) {
-          mainWindow.webContents.send('backend-status', { status: 'error', error: error.message });
+          try {
+            mainWindow.webContents.send('backend-status', { status: 'error', error: error.message });
+          } catch (e) {
+            // Window might be closed
+          }
         }
       });
 
     } catch (error) {
-      console.error('Error starting backend:', error);
+      try {
+        console.error('Error starting backend:', error);
+      } catch (e) {
+        // Ignore EPIPE errors when writing to closed streams
+      }
       this.starting = false;
     }
   }
@@ -131,9 +161,130 @@ class BackendManager {
   isReady() {
     return this.ready;
   }
+
+  startHealthCheck() {
+    // Start checking backend health every 2 seconds
+    const healthCheckInterval = setInterval(async () => {
+      if (this.ready) {
+        clearInterval(healthCheckInterval);
+        return;
+      }
+
+      try {
+        const response = await fetch(`http://${BACKEND_HOST}:${BACKEND_PORT}/health`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.status === 'ok') {
+            console.log('Backend health check passed - backend is ready');
+            this.ready = true;
+            this.starting = false;
+            clearInterval(healthCheckInterval);
+
+            // Notify renderer that backend is ready
+            if (mainWindow) {
+              mainWindow.webContents.send('backend-status', { status: 'ready', port: BACKEND_PORT });
+            }
+          }
+        }
+      } catch (error) {
+        // Backend not ready yet, keep checking
+        console.log('Backend health check failed, retrying...');
+      }
+    }, 2000);
+
+    // Stop checking after 2 minutes max
+    setTimeout(() => {
+      clearInterval(healthCheckInterval);
+      if (!this.ready) {
+        console.error('Backend failed to start within timeout');
+        if (mainWindow) {
+          mainWindow.webContents.send('backend-status', { status: 'timeout' });
+        }
+      }
+    }, 120000);
+  }
+}
+
+class FrontendManager {
+  constructor() {
+    this.process = null;
+    this.starting = false;
+    this.ready = false;
+  }
+
+  async start() {
+    if (this.starting || this.ready) return;
+
+    console.log('Starting LocalRecall frontend...');
+    this.starting = true;
+
+    try {
+      let frontendCwd = path.join(__dirname, '..', 'app');
+
+      if (isDev) {
+        // Development mode: use npm run dev
+        this.process = spawn('npm', ['run', 'dev'], {
+          cwd: frontendCwd,
+          stdio: ['pipe', 'pipe', 'pipe'],
+          env: { ...process.env }
+        });
+      } else {
+        // Production mode: use npm start
+        this.process = spawn('npm', ['start'], {
+          cwd: frontendCwd,
+          stdio: ['pipe', 'pipe', 'pipe'],
+          env: { ...process.env, PORT: FRONTEND_PORT.toString() }
+        });
+      }
+
+      this.process.stdout.on('data', (data) => {
+        const output = data.toString();
+        console.log(`Frontend: ${output}`);
+
+        // Check if frontend is ready
+        if (output.includes('Ready') || output.includes('ready')) {
+          this.ready = true;
+          this.starting = false;
+        }
+      });
+
+      this.process.stderr.on('data', (data) => {
+        console.error(`Frontend Error: ${data}`);
+      });
+
+      this.process.on('close', (code) => {
+        console.log(`Frontend process exited with code ${code}`);
+        this.ready = false;
+        this.starting = false;
+      });
+
+      this.process.on('error', (error) => {
+        console.error('Failed to start frontend:', error);
+        this.starting = false;
+      });
+
+    } catch (error) {
+      console.error('Error starting frontend:', error);
+      this.starting = false;
+    }
+  }
+
+  stop() {
+    if (this.process) {
+      console.log('Stopping frontend...');
+      this.process.kill();
+      this.process = null;
+      this.ready = false;
+    }
+  }
+
+  isReady() {
+    return this.ready;
+  }
 }
 
 const backendManager = new BackendManager();
+const frontendManager = new FrontendManager();
 
 function createWindow() {
   // Create the browser window
@@ -159,7 +310,12 @@ function createWindow() {
     // Open DevTools in development
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, '..', 'app', 'build', 'index.html'));
+    // In production, load static files directly
+    const htmlPath = path.join(__dirname, '..', 'app', 'build', 'index.html');
+    console.log('Loading frontend from:', htmlPath);
+    mainWindow.loadFile(htmlPath);
+    // Enable dev tools for debugging
+    mainWindow.webContents.openDevTools();
   }
 
   // Show window when ready
@@ -196,10 +352,10 @@ function createWindow() {
 // App event handlers
 app.whenReady().then(async () => {
   createWindow();
-  
-  // Start backend
-  await backendManager.start();
-  
+
+  // Start backend server
+  backendManager.start(); // Non-blocking - window shows immediately
+
   // Set up application menu
   const template = require('./menu');
   const menu = Menu.buildFromTemplate(template);
@@ -215,7 +371,7 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => {
   // Stop backend when app closes
   backendManager.stop();
-  
+
   if (process.platform !== 'darwin') {
     app.quit();
   }

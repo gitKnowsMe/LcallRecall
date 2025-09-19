@@ -22,17 +22,49 @@ class ModelManager {
   ];
 
   /**
-   * Auto-detect Phi-2 model in common locations
+   * Auto-detect Phi-2 model in common locations with timeout
    * @returns {Promise<string|null>} Path to detected model or null
    */
   static async detectModel() {
     console.log('🔍 Scanning for Phi-2 model...');
-    
-    for (const searchPath of this.commonPaths) {
+
+    // Create a timeout promise that resolves after 10 seconds
+    const timeoutPromise = new Promise((resolve) => {
+      setTimeout(() => {
+        console.log('⏰ Model detection timed out after 10 seconds');
+        resolve(null);
+      }, 10000);
+    });
+
+    // Create the detection promise
+    const detectionPromise = this.detectModelWithoutTimeout();
+
+    // Race between detection and timeout
+    return Promise.race([detectionPromise, timeoutPromise]);
+  }
+
+  /**
+   * Internal method for model detection without timeout
+   * @returns {Promise<string|null>} Path to detected model or null
+   */
+  static async detectModelWithoutTimeout() {
+    // Prioritize most likely locations first
+    const prioritizedPaths = [
+      path.join(os.homedir(), 'local AI', 'models'), // Most likely location
+      path.join(os.homedir(), 'Downloads'), // Common download location
+      path.join(os.homedir(), 'Library', 'Application Support', 'LocalRecall', 'models'),
+      path.join(os.homedir(), 'Documents', 'AI Models'),
+      '/opt/homebrew/models',
+      '/usr/local/models',
+      path.join(os.homedir(), '.cache', 'huggingface', 'hub'),
+      path.join(os.homedir(), '.cache', 'modelscope', 'hub'),
+    ];
+
+    for (const searchPath of prioritizedPaths) {
       try {
         const expandedPath = this.expandPath(searchPath);
         console.log(`   Checking: ${expandedPath}`);
-        
+
         const modelPath = await this.scanDirectory(expandedPath);
         if (modelPath) {
           console.log(`✅ Found Phi-2 model: ${modelPath}`);
@@ -43,7 +75,7 @@ class ModelManager {
         console.log(`   Skipped: ${searchPath} (${error.message})`);
       }
     }
-    
+
     console.log('❌ No Phi-2 model found in common locations');
     return null;
   }

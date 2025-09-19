@@ -7,7 +7,7 @@
     "electron": "NODE_ENV=development electron .",
     "electron:dev": "concurrently \"npm run frontend:dev\" \"wait-on http://localhost:3000 && npm run electron\"",
     "electron:pack": "electron-builder --dir",
-    "electron:dist": "npm run build:production && electron-builder",
+    "electron:dist": "npm run build:production && node scripts/fix-frontend-paths.js && electron-builder",
     "frontend:dev": "cd app && npm run dev",
     "frontend:build": "cd app && npm run build",
     "frontend:start": "cd app && npm run start",

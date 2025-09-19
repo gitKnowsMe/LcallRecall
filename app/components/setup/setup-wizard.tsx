@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { WelcomeStep } from './welcome-step';
 import { ModelSetupStep } from './model-setup-step';
 import { SetupCompleteStep } from './setup-complete-step';
@@ -29,10 +29,10 @@ export function SetupWizard({ onComplete, onSkip }: SetupWizardProps) {
   const [isDetecting, setIsDetecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Auto-detect model on component mount
-  useEffect(() => {
-    detectModel();
-  }, []);
+  // Manual model detection only - no automatic detection on mount
+  // useEffect(() => {
+  //   detectModel();
+  // }, []);
 
   const detectModel = async () => {
     setIsDetecting(true);
@@ -46,18 +46,18 @@ export function SetupWizard({ onComplete, onSkip }: SetupWizardProps) {
         if (result.found) {
           setModelPath(result.path);
           setModelInfo(result.info);
-          console.log('✅ Model auto-detected:', result.path);
+          // Model auto-detected
         } else {
-          console.log('❌ No model detected automatically');
+          // No model detected automatically
           setModelPath(null);
           setModelInfo(null);
         }
       } else {
         // Fallback for development/testing
-        console.log('No electronAPI available, skipping auto-detection');
+        // No electronAPI available, skipping auto-detection
       }
     } catch (err) {
-      console.error('Model detection error:', err);
+      // Model detection error
       setError(err instanceof Error ? err.message : 'Failed to detect model');
     } finally {
       setIsDetecting(false);

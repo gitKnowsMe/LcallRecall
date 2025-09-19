@@ -65,3 +65,14 @@
   This focuses on the core value proposition: "Ask questions
    about your PDFs locally." Once that works reliably, we
   can make it smarter and faster.
+
+
+  The only remaining step to see the full system in action is:
+
+  1. Create a test release in LocalRecall
+  2. Configure Vercel deploy hook (optional for full automation)
+
+  Would you like me to:
+  - Create the first test release to demonstrate the complete flow?
+  - Help configure the Vercel integration for full automation?
+  - Document the final deployment steps?

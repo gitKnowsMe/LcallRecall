@@ -29,6 +29,7 @@ export default function HomePage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const { needsSetup, setupState, completeSetup, skipSetup } = useSetup()
 
+
   // Show loading state while checking authentication and setup
   if (authLoading || setupState.isChecking) {
     return (
@@ -36,6 +37,7 @@ export default function HomePage() {
         <div className="text-center space-y-4">
           <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
           <p className="text-muted-foreground">Loading LocalRecall...</p>
+
         </div>
       </div>
     )
@@ -48,9 +50,8 @@ export default function HomePage() {
         onComplete={(modelPath) => {
           completeSetup(modelPath).then(() => {
             // Setup completed, page will re-render to show auth or main app
-            console.log('Setup completed successfully');
-          }).catch((error) => {
-            console.error('Setup completion failed:', error);
+          }).catch(() => {
+            // Setup completion failed
           });
         }}
         onSkip={skipSetup}

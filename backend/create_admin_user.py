@@ -21,12 +21,11 @@ def create_admin_user():
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
-        # Create users table if it doesn't exist
+        # Create users table if it doesn't exist (username-only, no email)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username VARCHAR(50) UNIQUE NOT NULL,
-                email VARCHAR(100) UNIQUE NOT NULL,
                 password_hash VARCHAR(255) NOT NULL,
                 workspace_id VARCHAR(36) NOT NULL,
                 is_active BOOLEAN DEFAULT TRUE,
@@ -52,13 +51,12 @@ def create_admin_user():
         result = cursor.fetchone()
         workspace_id = (result[0] + 1) if result[0] is not None else 1
         
-        # Insert admin user
+        # Insert admin user (username-only, no email)
         cursor.execute('''
-            INSERT INTO users (username, email, password_hash, workspace_id, is_active, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO users (username, password_hash, workspace_id, is_active, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?)
         ''', (
             "admin",
-            "admin@localhost",  # Dummy email
             password_hash,
             str(workspace_id),
             True,

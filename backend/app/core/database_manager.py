@@ -70,24 +70,34 @@ class DatabaseManager:
         try:
             db_config = self.config["database"]
             db_path = db_config["auth_db_path"]
-            
+
+            logger.info(f"Creating auth database at: {db_path}")
+            logger.info(f"Directory exists: {os.path.exists(os.path.dirname(db_path))}")
+            logger.info(f"Directory writable: {os.access(os.path.dirname(db_path), os.W_OK)}")
+
             # Ensure directory exists
             os.makedirs(os.path.dirname(db_path), exist_ok=True)
-            
+            logger.info(f"Directory created/verified: {os.path.dirname(db_path)}")
+
             # Create connection
+            logger.info("Creating SQLite connection...")
             conn = sqlite3.connect(
                 db_path,
                 timeout=db_config.get("connection_timeout", 30),
                 check_same_thread=False
             )
-            
+            logger.info("SQLite connection created successfully")
+
             # Configure connection
+            logger.info("Configuring connection...")
             self._configure_connection(conn)
-            
+
             # Create tables if needed
             if db_config.get("create_tables", True):
+                logger.info("Creating auth tables...")
                 self._create_auth_tables(conn)
-            
+                logger.info("Auth tables created successfully")
+
             self._connections["auth_db"] = conn
             logger.info(f"Auth database connected: {db_path}")
             
@@ -224,7 +234,6 @@ class DatabaseManager:
                 CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     username VARCHAR(50) UNIQUE NOT NULL,
-                    email VARCHAR(100) UNIQUE NOT NULL,
                     password_hash VARCHAR(255) NOT NULL,
                     workspace_id VARCHAR(36) NOT NULL,
                     is_active BOOLEAN DEFAULT TRUE,
@@ -486,14 +495,7 @@ class DatabaseManager:
         """Get migration scripts for database"""
         if db_name == "auth_db":
             return [
-                {
-                    "version": 2,
-                    "script": "ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT FALSE;"
-                },
-                {
-                    "version": 3,
-                    "script": "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);"
-                }
+                # Removed email-related migrations since we use username-only auth
             ]
         elif db_name == "metadata_db":
             return [

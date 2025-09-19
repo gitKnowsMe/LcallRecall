@@ -264,20 +264,18 @@ export function QueryInterface() {
       // Handle progress events
       eventSource.addEventListener('progress', (event) => {
         try {
-          console.log('Progress:', JSON.parse(event.data))
+          JSON.parse(event.data)
         } catch (error) {
-          console.error('Error handling progress:', error)
+          // Error handling progress event
         }
       })
 
       // Fallback onmessage for any other events
-      eventSource.onmessage = (event) => {
+      eventSource.onmessage = () => {
         hasReceivedData = true
-        console.log('Generic message event:', event)
       }
 
-      eventSource.onerror = (error) => {
-        console.error('SSE Error:', error)
+      eventSource.onerror = () => {
         
         // Only show error if stream hasn't completed normally
         if (!streamCompleted) {

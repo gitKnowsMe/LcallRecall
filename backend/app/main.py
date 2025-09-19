@@ -39,11 +39,14 @@ def load_default_config() -> Dict[str, Any]:
     if is_production:
         # Production: Use user data directory from environment variable
         user_data_path = os.getenv("LOCALRECALL_USER_DATA")
+        print(f"PRODUCTION: LOCALRECALL_USER_DATA env var: {user_data_path}")
         if not user_data_path:
             # Fallback for direct executable run
             import tempfile
             user_data_path = os.path.join(tempfile.gettempdir(), "LocalRecall")
+            print(f"PRODUCTION: Using fallback temp directory: {user_data_path}")
         data_dir = user_data_path
+        print(f"PRODUCTION: Final data directory: {data_dir}")
         os.makedirs(data_dir, exist_ok=True)
         os.makedirs(os.path.join(data_dir, "workspaces"), exist_ok=True)
     else:
@@ -127,6 +130,13 @@ async def initialize_application_components(config: Dict[str, Any]) -> None:
     database_manager = initialize_database_manager(config)
     await database_manager.initialize_all_databases()
     logger.info("✅ Databases initialized")
+
+    # Verify database manager is accessible globally
+    from app.core.database_manager import get_database_manager
+    if get_database_manager() is None:
+        logger.error("Database manager global variable not set properly!")
+    else:
+        logger.info("Database manager global variable verified")
     
     # Initialize service manager
     service_manager = initialize_service_manager(config)
@@ -261,6 +271,21 @@ async def get_status():
             }
     except Exception as e:
         logger.error(f"Status check failed: {e}")
+        raise HTTPException(status_code=503, detail="Service unhealthy")
+
+
+# Simple health endpoint for frontend compatibility
+@app.get("/health")
+async def get_health():
+    """Simple health check endpoint that frontend expects"""
+    try:
+        if service_manager:
+            services_health = service_manager.get_services_health()
+            return {"status": "ok" if all(services_health.values()) else "degraded"}
+        else:
+            return {"status": "starting"}
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
         raise HTTPException(status_code=503, detail="Service unhealthy")
 
 

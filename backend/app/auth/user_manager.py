@@ -159,7 +159,6 @@ class UserManager:
                 "user": {
                     "user_id": self.current_user.get("user_id"),
                     "username": self.current_user.get("username"),
-                    "email": self.current_user.get("email"),
                     "workspace_id": self.current_workspace_id
                 },
                 "workspace": workspace_stats,

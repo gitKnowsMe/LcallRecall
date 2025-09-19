@@ -6,6 +6,7 @@ import logging
 
 from ..auth.auth_service import auth_service, AuthError, UserAlreadyExistsError
 from ..auth.user_manager import user_manager, WorkspaceError
+from ..core.database_manager import get_database_manager
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,16 @@ async def get_current_user_from_token(credentials: HTTPAuthorizationCredentials 
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e)
         )
+
+@router.get("/debug/database-status")
+async def debug_database_status():
+    """Debug endpoint to check database manager status"""
+    db_manager = get_database_manager()
+    return {
+        "database_manager_exists": db_manager is not None,
+        "database_manager_type": type(db_manager).__name__ if db_manager else None,
+        "is_initialized": getattr(db_manager, '_initialized', None) if db_manager else None,
+    }
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserCreate):

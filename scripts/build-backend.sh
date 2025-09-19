@@ -58,6 +58,8 @@ hidden_imports = [
     'sqlalchemy',
     'sqlalchemy.dialects.sqlite',
     'aiosqlite',
+    'sqlite3',
+    '_sqlite3',
     'bcrypt',
     'jose',
     'jose.jwt',
@@ -187,8 +189,8 @@ if [[ -f "dist/localrecall-backend" ]]; then
         "use_user_data_path": true
     },
     "model": {
-        "path": null,
-        "auto_detect": true
+        "path": "/Users/singularity/local AI/models/phi-2-instruct-Q4_K_M.gguf",
+        "auto_detect": false
     }
 }
 EOF

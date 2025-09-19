@@ -4,7 +4,7 @@ const nextConfig = {
   output: 'export',
   trailingSlash: true,
   distDir: 'build',
-  
+
   // Asset optimization for Electron
   images: {
     unoptimized: true,

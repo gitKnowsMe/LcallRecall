@@ -155,19 +155,19 @@ class DesktopAPI {
 
     try {
       const response = await fetch(url, defaultOptions);
-      
+
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const responseText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${responseText}`);
       }
-      
+
       const contentType = response.headers.get('content-type');
       if (contentType?.includes('application/json')) {
         return await response.json();
       }
-      
+
       return await response.text();
     } catch (error) {
-      console.error(`API request failed: ${endpoint}`, error);
       throw error;
     }
   }

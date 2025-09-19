@@ -239,18 +239,16 @@ export function LLMChat() {
       })
 
       // Handle start events
-      eventSource.addEventListener('start', (event) => {
-        console.log('LLM stream started')
+      eventSource.addEventListener('start', () => {
+        // LLM stream started
       })
 
       // Fallback onmessage for any other events
-      eventSource.onmessage = (event) => {
+      eventSource.onmessage = () => {
         hasReceivedData = true
-        console.log('Generic LLM message event:', event)
       }
 
-      eventSource.onerror = (error) => {
-        console.error('LLM SSE Error:', error)
+      eventSource.onerror = () => {
         
         // Only show error if stream hasn't completed normally
         if (!streamCompleted) {
